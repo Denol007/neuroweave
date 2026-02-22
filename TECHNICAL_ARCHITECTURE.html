@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroWeave — Техническая Архитектура</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0b;--bg-card:#111113;--bg-card-hover:#18181b;--bg-sidebar:#0e0e10;
+  --border:#1e1e22;--border-hover:#2a2a30;
+  --text:#e4e4e7;--text-muted:#71717a;--text-dim:#52525b;
+  --accent:#6366f1;--accent-hover:#818cf8;--accent-glow:rgba(99,102,241,.15);
+  --green:#22c55e;--orange:#f97316;--red:#ef4444;--cyan:#06b6d4;--pink:#ec4899;
+  --purple:#a855f7;--yellow:#eab308;
+  --sidebar-w:260px;--header-h:0px;
+  --radius:12px;--radius-sm:8px;
+}
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#27272a #0a0a0b}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:#27272a;border-radius:3px}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;background:var(--bg-sidebar);border-right:1px solid var(--border);padding:24px 0;overflow-y:auto;z-index:100;transition:transform .3s ease}
+.sidebar-logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.sidebar-logo h2{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sidebar-logo span{font-size:11px;color:var(--text-muted);display:block;margin-top:2px;letter-spacing:.5px;text-transform:uppercase}
+.nav-section{padding:0 12px;margin-bottom:8px}
+.nav-section-title{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-dim);padding:8px 12px 4px;font-weight:600}
+.nav-link{display:flex;align-items:center;gap:8px;padding:7px 12px;color:var(--text-muted);text-decoration:none;font-size:13px;border-radius:var(--radius-sm);transition:all .15s;font-weight:450}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.nav-link.active{color:var(--accent-hover);background:var(--accent-glow);font-weight:550}
+.nav-link .nav-icon{width:18px;text-align:center;font-size:14px;flex-shrink:0}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);min-height:100vh}
+
+/* HERO */
+.hero{padding:100px 60px 80px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-200px;right:-200px;width:600px;height:600px;background:radial-gradient(circle,var(--accent-glow),transparent 70%);pointer-events:none}
+.hero::after{content:'';position:absolute;bottom:-100px;left:-100px;width:400px;height:400px;background:radial-gradient(circle,rgba(6,182,212,.08),transparent 70%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text-muted);margin-bottom:24px;background:rgba(255,255,255,.02)}
+.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hero h1{font-size:clamp(36px,5vw,56px);font-weight:800;line-height:1.1;margin-bottom:16px;letter-spacing:-.02em}
+.hero h1 .gradient{background:linear-gradient(135deg,var(--accent),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .subtitle{font-size:clamp(16px,2vw,20px);color:var(--text-muted);max-width:700px;line-height:1.6;margin-bottom:48px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;max-width:800px}
+.metric{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:all .2s}
+.metric:hover{border-color:var(--border-hover);transform:translateY(-2px)}
+.metric .value{font-size:28px;font-weight:700;color:var(--accent-hover);font-variant-numeric:tabular-nums}
+.metric .label{font-size:12px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+
+/* SECTIONS */
+.section{padding:60px;border-top:1px solid var(--border);position:relative}
+.section-header{margin-bottom:40px}
+.section-number{font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.section-title{font-size:clamp(24px,3vw,36px);font-weight:700;letter-spacing:-.01em}
+.section-desc{color:var(--text-muted);margin-top:8px;font-size:15px;max-width:600px}
+
+/* CARDS */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;transition:all .25s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--border-hover);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+.card:nth-child(1)::before{background:linear-gradient(90deg,var(--accent),var(--cyan))}
+.card:nth-child(2)::before{background:linear-gradient(90deg,var(--green),var(--cyan))}
+.card:nth-child(3)::before{background:linear-gradient(90deg,var(--orange),var(--yellow))}
+.card:nth-child(4)::before{background:linear-gradient(90deg,var(--pink),var(--purple))}
+.card-icon{font-size:28px;margin-bottom:12px}
+.card h3{font-size:17px;font-weight:650;margin-bottom:6px}
+.card .card-sub{font-size:13px;color:var(--accent);margin-bottom:12px;font-weight:500}
+.card p{font-size:13.5px;color:var(--text-muted);line-height:1.65}
+.card .tech-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.card .tech-tag{padding:3px 10px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+
+/* DIAGRAM CONTAINERS */
+.diagram-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;margin:24px 0;overflow-x:auto}
+.diagram-box .mermaid{display:flex;justify-content:center}
+
+/* CODE BLOCKS */
+.code-block{background:#0d0d10;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:20px 0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border)}
+.code-lang{font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-weight:500}
+.code-body{padding:20px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:#c9d1d9}
+.code-body .kw{color:#ff7b72}.code-body .str{color:#a5d6ff}.code-body .cm{color:#8b949e;font-style:italic}
+.code-body .fn{color:#d2a8ff}.code-body .tp{color:#79c0ff}.code-body .op{color:#ff7b72}.code-body .nb{color:#ffa657}
+.code-body .key{color:#7ee787}.code-body .val{color:#a5d6ff}.code-body .num{color:#ffa657}
+
+/* PIPELINE (horizontal) */
+.pipeline{display:flex;align-items:center;gap:0;overflow-x:auto;padding:20px 0;flex-wrap:nowrap}
+.pipeline-step{display:flex;flex-direction:column;align-items:center;min-width:120px;flex-shrink:0}
+.pipeline-node{width:100px;height:100px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid var(--border);background:var(--bg-card);transition:all .3s;cursor:default}
+.pipeline-node:hover{border-color:var(--accent);transform:scale(1.08)}
+.pipeline-node .p-icon{font-size:24px;margin-bottom:4px}
+.pipeline-node .p-label{font-size:10px;color:var(--text-muted);text-align:center;font-weight:500}
+.pipeline-arrow{color:var(--text-dim);font-size:20px;flex-shrink:0;margin:0 4px}
+.pipeline-step-label{font-size:11px;color:var(--text-muted);margin-top:10px;text-align:center;max-width:100px}
+
+/* STAGE */
+.stages{display:flex;flex-direction:column;gap:0;position:relative}
+.stage-connector{width:2px;height:32px;background:var(--border);margin:0 auto}
+.stage{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;position:relative;transition:all .25s}
+.stage:hover{border-color:var(--accent);box-shadow:0 0 30px var(--accent-glow)}
+.stage-num{position:absolute;top:-12px;left:24px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:2px 12px;border-radius:12px}
+.stage h4{font-size:15px;font-weight:600;margin-bottom:8px;margin-top:4px}
+.stage p,.stage ul{font-size:13px;color:var(--text-muted);line-height:1.7}
+.stage ul{margin-left:16px;margin-top:6px}
+.stage code{font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:4px;color:var(--cyan)}
+
+/* TABLE */
+.api-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.api-table thead{position:sticky;top:0}
+.api-table th{text-align:left;padding:12px 16px;background:rgba(99,102,241,.1);color:var(--accent-hover);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+.api-table td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:top}
+.api-table tr:hover td{background:rgba(255,255,255,.02)}
+.api-table .method{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:12px;padding:2px 8px;border-radius:4px;display:inline-block}
+.method-get{background:rgba(34,197,94,.12);color:var(--green)}
+.method-post{background:rgba(99,102,241,.12);color:var(--accent-hover)}
+.method-delete{background:rgba(239,68,68,.12);color:var(--red)}
+.method-patch{background:rgba(249,115,22,.12);color:var(--orange)}
+.api-table .path{font-family:'JetBrains Mono',monospace;color:var(--text);font-size:13px}
+.api-table .api-group{background:rgba(255,255,255,.02)}
+.api-table .api-group td{color:var(--text-muted);font-weight:600;font-size:12px;letter-spacing:.5px;padding:8px 16px}
+
+/* TECH STACK */
+.stack-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.stack-row{display:flex;align-items:flex-start;gap:16px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);transition:all .2s}
+.stack-row:hover{border-color:var(--border-hover)}
+.stack-layer{min-width:140px;font-size:12px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;padding-top:2px}
+.stack-items{display:flex;flex-wrap:wrap;gap:8px}
+.stack-item{font-size:12.5px;color:var(--text);background:rgba(255,255,255,.04);padding:4px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace}
+
+/* TIMELINE */
+.timeline{position:relative;padding-left:40px}
+.timeline::before{content:'';position:absolute;left:15px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--accent),var(--cyan),var(--green),var(--orange),var(--pink))}
+.timeline-item{position:relative;margin-bottom:32px;padding:20px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);transition:all .25s}
+.timeline-item:hover{border-color:var(--accent);transform:translateX(4px)}
+.timeline-item::before{content:'';position:absolute;left:-33px;top:24px;width:12px;height:12px;border-radius:50%;border:2px solid var(--accent);background:var(--bg)}
+.timeline-phase{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.timeline-title{font-size:16px;font-weight:600;margin-bottom:6px}
+.timeline-desc{font-size:13px;color:var(--text-muted);line-height:1.6}
+.timeline-months{font-size:11px;color:var(--text-dim);margin-top:8px;font-family:'JetBrains Mono',monospace}
+.timeline-milestones{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.milestone-tag{font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,.1);color:var(--accent-hover);font-weight:500}
+
+/* FILE TREE */
+.file-tree{font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.9;color:var(--text-muted);padding:20px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)}
+.file-tree .dir{color:var(--accent-hover);font-weight:500}
+.file-tree .file{color:var(--text)}
+.file-tree .comment{color:var(--text-dim);font-style:italic}
+
+/* BUSINESS MODEL */
+.biz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px}
+.biz-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;position:relative;overflow:hidden}
+.biz-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.biz-card:first-child::before{background:linear-gradient(90deg,var(--accent),var(--purple))}
+.biz-card:last-child::before{background:linear-gradient(90deg,var(--green),var(--cyan))}
+.biz-card h3{font-size:18px;font-weight:700;margin-bottom:4px}
+.biz-card .biz-sub{font-size:13px;color:var(--accent);margin-bottom:16px;font-style:italic}
+.biz-card .biz-section{margin-bottom:16px}
+.biz-card .biz-section h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.biz-card .biz-section p,.biz-card .biz-section li{font-size:13px;color:var(--text-muted);line-height:1.6}
+.biz-card ul{margin-left:16px}
+
+/* CONSENT MOCKUP */
+.consent-mock{background:linear-gradient(135deg,#1e1f22,#2b2d31);border-radius:var(--radius);padding:28px;max-width:560px;margin:20px auto;border:1px solid #3f4147;font-size:14px}
+.consent-mock .cm-header{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.consent-mock .cm-icon{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px}
+.consent-mock .cm-name{font-weight:600;color:#fff}
+.consent-mock .cm-badge{font-size:10px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:4px;font-weight:600}
+.consent-mock .cm-body{color:#dcddde;line-height:1.6;margin-bottom:16px}
+.consent-mock .cm-option{background:rgba(0,0,0,.2);border:1px solid #3f4147;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:10px}
+.consent-mock .cm-checkbox{width:20px;height:20px;border:2px solid #72767d;border-radius:4px;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.consent-mock .cm-checkbox.checked{background:var(--accent);border-color:var(--accent)}
+.consent-mock .cm-opt-title{font-weight:600;font-size:14px;color:#fff;margin-bottom:2px}
+.consent-mock .cm-opt-desc{font-size:12px;color:#b5bac1}
+.consent-mock .cm-buttons{display:flex;gap:10px;margin-top:16px}
+.consent-mock .cm-btn{padding:8px 20px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.consent-mock .cm-btn-accept{background:var(--green);color:#fff}
+.consent-mock .cm-btn-decline{background:transparent;color:#b5bac1;border:1px solid #3f4147}
+.consent-mock .cm-footer{font-size:11px;color:#72767d;margin-top:12px}
+
+/* INFRA DIAGRAM */
+.infra-box{background:var(--bg-card);border:2px solid var(--border);border-radius:var(--radius);padding:28px;position:relative}
+.infra-title{position:absolute;top:-12px;left:20px;background:var(--bg-card);padding:0 12px;font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
+.infra-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.infra-service{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center;transition:all .2s}
+.infra-service:hover{border-color:var(--accent);background:var(--accent-glow)}
+.infra-service .svc-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.infra-service .svc-tech{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+.infra-service .svc-detail{font-size:11px;color:var(--text-dim);margin-top:4px}
+.infra-wide{grid-column:1/-1}
+.external-services{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.ext-svc{padding:6px 14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text-muted)}
+
+/* NETWORK EFFECT */
+.network-box{background:linear-gradient(135deg,var(--accent-glow),rgba(6,182,212,.08));border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;margin-top:24px;text-align:center}
+.network-box p{font-size:15px;color:var(--text);font-weight:500}
+
+/* ER DIAGRAM custom */
+.er-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.er-table{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:all .2s}
+.er-table:hover{border-color:var(--accent)}
+.er-table-name{padding:10px 16px;font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;border-bottom:1px solid var(--border);color:var(--accent-hover);background:rgba(99,102,241,.06)}
+.er-col{padding:4px 16px;font-size:12px;font-family:'JetBrains Mono',monospace;display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.02)}
+.er-col:last-child{border-bottom:none}
+.er-col .col-name{color:var(--text)}
+.er-col .col-type{color:var(--text-dim);font-size:11px}
+.er-col.pk .col-name::before{content:'PK ';color:var(--yellow);font-weight:700;font-size:10px}
+.er-col.fk .col-name::before{content:'FK ';color:var(--cyan);font-weight:700;font-size:10px}
+
+/* ANIMATIONS */
+.fade-in{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+
+/* MOBILE TOGGLE */
+.mobile-toggle{display:none;position:fixed;top:16px;left:16px;z-index:200;width:40px;height:40px;border-radius:var(--radius-sm);background:var(--bg-card);border:1px solid var(--border);cursor:pointer;align-items:center;justify-content:center}
+.mobile-toggle span{display:block;width:18px;height:2px;background:var(--text);margin:3px auto;transition:all .2s}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .mobile-toggle{display:flex}
+  .hero{padding:80px 24px 60px}
+  .section{padding:40px 24px}
+  .infra-grid{grid-template-columns:1fr 1fr}
+  .metrics{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  .infra-grid{grid-template-columns:1fr}
+  .card-grid{grid-template-columns:1fr}
+  .biz-grid{grid-template-columns:1fr}
+  .pipeline{flex-wrap:wrap;justify-content:center}
+  .metrics{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- MOBILE TOGGLE -->
+<button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="Toggle menu">
+  <span></span><span></span><span></span>
+</button>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h2>NeuroWeave</h2>
+    <span>Technical Architecture v1.0</span>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Overview</div>
+    <a href="#hero" class="nav-link active"><span class="nav-icon">01</span> Introduction</a>
+    <a href="#system-overview" class="nav-link"><span class="nav-icon">02</span> System Overview</a>
+    <a href="#four-pillars" class="nav-link"><span class="nav-icon">03</span> Four Pillars</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Core Systems</div>
+    <a href="#langgraph" class="nav-link"><span class="nav-icon">04</span> LangGraph Pipeline</a>
+    <a href="#data-flow" class="nav-link"><span class="nav-icon">05</span> Data Flow</a>
+    <a href="#pii" class="nav-link"><span class="nav-icon">06</span> PII Anonymization</a>
+    <a href="#c2pa" class="nav-link"><span class="nav-icon">07</span> C2PA Provenance</a>
+    <a href="#gdpr" class="nav-link"><span class="nav-icon">08</span> GDPR Consent</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Data & Infra</div>
+    <a href="#database" class="nav-link"><span class="nav-icon">09</span> Database Schema</a>
+    <a href="#stripe" class="nav-link"><span class="nav-icon">10</span> Stripe Revenue</a>
+    <a href="#tech-stack" class="nav-link"><span class="nav-icon">11</span> Tech Stack</a>
+    <a href="#infra" class="nav-link"><span class="nav-icon">12</span> Infrastructure</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Business</div>
+    <a href="#business" class="nav-link"><span class="nav-icon">13</span> Business Model</a>
+    <a href="#roadmap" class="nav-link"><span class="nav-icon">14</span> Roadmap</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Reference</div>
+    <a href="#project-structure" class="nav-link"><span class="nav-icon">15</span> Project Structure</a>
+    <a href="#api" class="nav-link"><span class="nav-icon">16</span> API Endpoints</a>
+    <a href="#schema" class="nav-link"><span class="nav-icon">17</span> Pydantic Schema</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+<!-- SECTION 1: HERO -->
+<section class="hero" id="hero">
+  <div class="hero-badge"><span class="dot"></span> Technical Architecture Document</div>
+  <h1>
+    <span class="gradient">NeuroWeave</span><br>
+    Platform Architecture
+  </h1>
+  <p class="subtitle">
+    Децентрализованная платформа извлечения, анонимизации и лицензирования технических знаний из Discord-серверов
+  </p>
+  <div class="metrics">
+    <div class="metric"><div class="value">6</div><div class="label">System Layers</div></div>
+    <div class="metric"><div class="value">4</div><div class="label">Tech Pillars</div></div>
+    <div class="metric"><div class="value">&lt;500ms</div><div class="label">PII Latency (CPU)</div></div>
+    <div class="metric"><div class="value">C2PA</div><div class="label">Digital Provenance</div></div>
+  </div>
+</section>
+
+<!-- SECTION 2: SYSTEM OVERVIEW -->
+<section class="section fade-in" id="system-overview">
+  <div class="section-header">
+    <div class="section-number">Section 01</div>
+    <h2 class="section-title">System Overview</h2>
+    <p class="section-desc">High-level architecture showing data flow from Discord servers through the full processing pipeline to end consumers</p>
+  </div>
+  <div class="diagram-box">
+    <div class="mermaid">
+graph TB
+    subgraph DISCORD["DISCORD ECOSYSTEM"]
+        SA["Server A<br/>(React)"]
+        SB["Server B<br/>(Python)"]
+        SC["Server C<br/>(Rust)"]
+        SN["Server N<br/>(Go)"]
+    end
+
+    SA & SB & SC & SN -->|"Discord Gateway"| GW["Gateway / Webhooks"]
+
+    subgraph INGESTION["INGESTION LAYER"]
+        BOT["Discord Bot<br/>discord.py"]
+        MQ["Message Queue<br/>Redis Streams"]
+        RAW["Raw Message Store<br/>PostgreSQL"]
+        BOT --> MQ --> RAW
+    end
+
+    GW --> BOT
+
+    subgraph PRIVACY["PRIVACY LAYER"]
+        PII["PII Detection<br/>Llama 3.2 1B"]
+        RED["PII Redaction<br/>Regex + AI"]
+        AUD["Audit Logger<br/>Immutable Log"]
+        PII --> RED --> AUD
+    end
+
+    RAW --> PII
+
+    subgraph EXTRACTION["EXTRACTION LAYER"]
+        DIS["Disentanglement<br/>Sentence-BERT"]
+        LAG["LangGraph Agents<br/>StateGraph"]
+        KS["Knowledge Store<br/>PostgreSQL + pgvector"]
+        DIS --> LAG --> KS
+    end
+
+    AUD --> DIS
+
+    subgraph PRESENTATION["PRESENTATION LAYER"]
+        WEB["Next.js Web Portal<br/>SSR / SEO"]
+        DISC["Discord In-Chat<br/>/nw-ask"]
+    end
+
+    subgraph COMMERCE["DATA COMMERCE LAYER"]
+        C2P["C2PA Signing<br/>X.509 Digital Signatures"]
+        PKG["Dataset Packager<br/>JSONL / JSON / Markdown"]
+        MKT["Marketplace<br/>Opendatabay / Datarade"]
+        C2P --> PKG --> MKT
+    end
+
+    KS --> WEB
+    KS --> DISC
+    KS --> C2P
+
+    subgraph PAYMENT["PAYMENT LAYER"]
+        STP["Stripe Connect<br/>Revenue Share + KYC/AML"]
+    end
+
+    MKT --> STP
+
+    style DISCORD fill:#1a1a2e,stroke:#6366f1,color:#e4e4e7
+    style INGESTION fill:#1a1a2e,stroke:#22c55e,color:#e4e4e7
+    style PRIVACY fill:#1a1a2e,stroke:#ef4444,color:#e4e4e7
+    style EXTRACTION fill:#1a1a2e,stroke:#f97316,color:#e4e4e7
+    style PRESENTATION fill:#1a1a2e,stroke:#06b6d4,color:#e4e4e7
+    style COMMERCE fill:#1a1a2e,stroke:#a855f7,color:#e4e4e7
+    style PAYMENT fill:#1a1a2e,stroke:#eab308,color:#e4e4e7
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: FOUR PILLARS -->
+<section class="section fade-in" id="four-pillars">
+  <div class="section-header">
+    <div class="section-number">Section 02</div>
+    <h2 class="section-title">Four Technology Pillars</h2>
+    <p class="section-desc">Core technological differentiators that form the foundation of the platform</p>
+  </div>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-icon">&#129302;</div>
+      <h3>Agentic Extraction Layer</h3>
+      <div class="card-sub">Pillar 1</div>
+      <p>Multi-agent LangGraph StateGraph pipeline for intelligent knowledge extraction from unstructured Discord conversations</p>
+      <div class="tech-tags">
+        <span class="tech-tag">LangGraph</span>
+        <span class="tech-tag">StateGraph</span>
+        <span class="tech-tag">Pydantic v2</span>
+        <span class="tech-tag">Claude Haiku</span>
+      </div>
+      <p style="margin-top:14px;font-size:12px;color:var(--green)">&#8594; Structured Knowledge Base (JSON)</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#128274;</div>
+      <h3>Privacy-Preserving Edge AI</h3>
+      <div class="card-sub">Pillar 2</div>
+      <p>Zero-trust PII anonymization running entirely on CPU with quantized Llama model. No personal data ever leaves the pipeline.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">Llama 3.2 1B</span>
+        <span class="tech-tag">INT8 Quantized</span>
+        <span class="tech-tag">CPU-only</span>
+        <span class="tech-tag">Zero-trust</span>
+      </div>
+      <p style="margin-top:14px;font-size:12px;color:var(--green)">&#8594; Clean text without PII (GDPR-safe)</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#128272;</div>
+      <h3>Digital Provenance (C2PA)</h3>
+      <div class="card-sub">Pillar 3</div>
+      <p>Every dataset is cryptographically signed with C2PA standard, ensuring tamper-proof provenance chain from source to buyer.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">C2PA Python SDK</span>
+        <span class="tech-tag">X.509 Certs</span>
+        <span class="tech-tag">AWS KMS</span>
+        <span class="tech-tag">SHA-256</span>
+      </div>
+      <p style="margin-top:14px;font-size:12px;color:var(--green)">&#8594; Certified tamper-proof datasets</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">&#127760;</div>
+      <h3>Decentralized Economy</h3>
+      <div class="card-sub">Pillar 4</div>
+      <p>Data Unions model: communities contribute data, receive automated revenue share via Stripe Connect. True data ownership.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">Stripe Connect</span>
+        <span class="tech-tag">Revenue Share</span>
+        <span class="tech-tag">KYC/AML</span>
+        <span class="tech-tag">Data Unions</span>
+      </div>
+      <p style="margin-top:14px;font-size:12px;color:var(--green)">&#8594; Automated payouts to communities</p>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 4: LANGGRAPH PIPELINE -->
+<section class="section fade-in" id="langgraph">
+  <div class="section-header">
+    <div class="section-number">Section 03</div>
+    <h2 class="section-title">LangGraph: Multi-Agent Extraction</h2>
+    <p class="section-desc">StateGraph-based pipeline with Router, Evaluator, and Compiler nodes processing Discord threads into structured knowledge</p>
+  </div>
+  <div class="diagram-box">
+    <div class="mermaid">
+graph TD
+    START(["Batch messages<br/>from Discord"]) --> DISENTANGLE
+
+    DISENTANGLE["Disentanglement Engine<br/>───────────────<br/>Sentence-BERT embeddings<br/>Cosine Similarity<br/>Temporal Clustering"]
+
+    DISENTANGLE --> THREAD1["Thread 1<br/>Bug Report"]
+    DISENTANGLE --> THREAD2["Thread 2<br/>Architecture Q&A"]
+    DISENTANGLE --> THREAD3["Thread N<br/>..."]
+
+    THREAD1 & THREAD2 & THREAD3 --> ROUTER
+
+    ROUTER{{"Router Node<br/>──────────<br/>Classify:<br/>NOISE | TECHNICAL"}}
+
+    ROUTER -->|"NOISE"| DISCARD[/"Discarded<br/>memes, spam"/]
+    ROUTER -->|"TECHNICAL"| EVALUATOR
+
+    EVALUATOR{{"Evaluator Node<br/>──────────<br/>Problem solved?<br/>Has code solution?"}}
+
+    EVALUATOR -->|"Incomplete"| WAIT[("Checkpoint<br/>MongoDBSaver<br/>──────<br/>Await new<br/>messages")]
+    WAIT -->|"New messages"| EVALUATOR
+
+    EVALUATOR -->|"Complete"| COMPILER
+
+    COMPILER[["Compiler Node<br/>──────────────<br/>LLM: Claude Haiku<br/>+ Pydantic Schema<br/>──────────────<br/>Symptom → Diagnosis → Solution"]]
+
+    COMPILER --> QUALITY{{"Quality Gate<br/>score ≥ 0.7?"}}
+
+    QUALITY -->|"< 0.7"| REJECT[/"Low quality<br/>rejected"/]
+    QUALITY -->|"≥ 0.7"| STORE[("Knowledge Store<br/>PostgreSQL + pgvector")]
+
+    STORE --> WEB["Web Portal"]
+    STORE --> DATASET["Dataset Pool"]
+
+    style ROUTER fill:#4a9eff,color:#fff
+    style EVALUATOR fill:#ff9f43,color:#fff
+    style COMPILER fill:#2ed573,color:#fff
+    style QUALITY fill:#ff6b6b,color:#fff
+    style WAIT fill:#786fa6,color:#fff
+    style STORE fill:#1a1a2e,stroke:#22c55e,color:#e4e4e7
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 5: DATA FLOW -->
+<section class="section fade-in" id="data-flow">
+  <div class="section-header">
+    <div class="section-number">Section 04</div>
+    <h2 class="section-title">Data Processing Pipeline</h2>
+    <p class="section-desc">End-to-end data flow from raw Discord messages to marketable datasets</p>
+  </div>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+    A["Discord<br/>Raw Messages"] --> B["Redis<br/>Stream Queue"]
+    B --> C["PII Redaction<br/>Edge AI"]
+    C --> D["Disentanglement<br/>Sentence-BERT"]
+    D --> E["LangGraph<br/>Agent Pipeline"]
+    E --> F["Quality<br/>Scoring"]
+    F --> G{"Score?"}
+    G -->|"≥ 0.7"| H["Knowledge<br/>Base DB"]
+    G -->|"< 0.7"| I["Rejected<br/>Archive"]
+    H --> J["Web Portal<br/>Next.js"]
+    H --> K["JSONL Export<br/>+ C2PA Sign"]
+    K --> L["Data<br/>Marketplace"]
+
+    style A fill:#5865F2,color:#fff
+    style C fill:#ef4444,color:#fff
+    style E fill:#22c55e,color:#fff
+    style H fill:#6366f1,color:#fff
+    style L fill:#a855f7,color:#fff
+    </div>
+  </div>
+  <div style="margin-top:32px">
+    <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">Pipeline Steps</h3>
+    <div class="pipeline">
+      <div class="pipeline-step"><div class="pipeline-node" style="border-color:#5865F2"><span class="p-icon">&#128172;</span><span class="p-label">Discord</span></div><div class="pipeline-step-label">Raw JSON events ~1000 msg/min</div></div>
+      <span class="pipeline-arrow">&#8594;</span>
+      <div class="pipeline-step"><div class="pipeline-node" style="border-color:#ef4444"><span class="p-icon">&#9888;</span><span class="p-label">Redis</span></div><div class="pipeline-step-label">Buffering Backpressure</div></div>
+      <span class="pipeline-arrow">&#8594;</span>
+      <div class="pipeline-step"><div class="pipeline-node" style="border-color:#f97316"><span class="p-icon">&#128274;</span><span class="p-label">PII Filter</span></div><div class="pipeline-step-label">&lt;PII:EMAIL&gt; &lt;PII:PERSON&gt;</div></div>
+      <span class="pipeline-arrow">&#8594;</span>
+      <div class="pipeline-step"><div class="pipeline-node" style="border-color:#eab308"><span class="p-icon">&#128256;</span><span class="p-label">Cluster</span></div><div class="pipeline-step-label">cosine &gt; 0.75 grouping</div></div>
+      <span class="pipeline-arrow">&#8594;</span>
+      <div class="pipeline-step"><div class="pipeline-node" style="border-color:#22c55e"><span class="p-icon">&#129302;</span><span class="p-label">Agents</span></div><div class="pipeline-step-label">Router &#8594; Eval &#8594; Compile</div></div>
+      <span class="pipeline-arrow">&#8594;</span>
+      <div class="pipeline-step"><div class="pipeline-node" style="border-color:#6366f1"><span class="p-icon">&#128202;</span><span class="p-label">Quality</span></div><div class="pipeline-step-label">score &#8805; 0.7 gate</div></div>
+      <span class="pipeline-arrow">&#8594;</span>
+      <div class="pipeline-step"><div class="pipeline-node" style="border-color:#a855f7"><span class="p-icon">&#128230;</span><span class="p-label">Output</span></div><div class="pipeline-step-label">KB + C2PA + JSONL</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 6: PII ANONYMIZATION -->
+<section class="section fade-in" id="pii">
+  <div class="section-header">
+    <div class="section-number">Section 05</div>
+    <h2 class="section-title">PII Anonymization Pipeline</h2>
+    <p class="section-desc">Zero-trust 4-stage privacy pipeline ensuring no personal data survives processing</p>
+  </div>
+
+  <div class="diagram-box" style="background:linear-gradient(135deg,rgba(239,68,68,.05),rgba(249,115,22,.05));border-color:rgba(239,68,68,.2)">
+    <div style="margin-bottom:20px;padding:16px;background:rgba(0,0,0,.3);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-muted);line-height:1.7">
+      <span style="color:var(--text-dim)">// Raw input message</span><br>
+      <span style="color:var(--text)">"Hey <span style="color:var(--red)">@JohnSmith</span>, my server at <span style="color:var(--red)">192.168.1.50</span> crashes with OOM. Email me at <span style="color:var(--red)">john@acme.com</span>. Here's the stacktrace: ..."</span>
+    </div>
+  </div>
+
+  <div class="stages">
+    <div class="stage">
+      <span class="stage-num" style="background:var(--orange)">Stage 1</span>
+      <h4>Regex Pre-Filter</h4>
+      <p>Deterministic pattern matching for known PII formats</p>
+      <ul>
+        <li>Email: <code>/[\w.-]+@[\w.-]+\.\w+/</code></li>
+        <li>IP Address: <code>/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d+/</code></li>
+        <li>Phone: <code>/\+?\d{10,15}/</code></li>
+        <li>URLs with tokens, API Keys / Secrets</li>
+      </ul>
+      <p style="margin-top:8px">Confidence: <span style="color:var(--orange);font-weight:600">~70% recall</span></p>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage">
+      <span class="stage-num" style="background:var(--red)">Stage 2</span>
+      <h4>AI Model (NER) &mdash; Llama 3.2 1B PII-Redact</h4>
+      <p>Context-aware Named Entity Recognition running on CPU (INT8 quantized). Latency &lt; 500ms per message.</p>
+      <ul>
+        <li><code>PERSON: "JohnSmith"</code> &#8594; <code>&lt;PII:PERSON_1&gt;</code></li>
+        <li><code>IP_ADDR: "192.168.1.50"</code> &#8594; <code>&lt;PII:IP&gt;</code></li>
+        <li><code>EMAIL: "john@acme.com"</code> &#8594; <code>&lt;PII:EMAIL&gt;</code></li>
+      </ul>
+      <p style="margin-top:8px">Confidence: <span style="color:var(--green);font-weight:600">~95% recall</span></p>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage">
+      <span class="stage-num" style="background:var(--accent)">Stage 3</span>
+      <h4>Irreversible Replacement</h4>
+      <div style="margin:12px 0;padding:12px 16px;background:rgba(0,0,0,.3);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted);line-height:1.7">
+        "Hey <span style="color:var(--cyan)">&lt;PII:PERSON_1&gt;</span>, my server at <span style="color:var(--cyan)">&lt;PII:IP&gt;</span> crashes with OOM. Email me at <span style="color:var(--cyan)">&lt;PII:EMAIL&gt;</span>. Here's the stacktrace: ..."
+      </div>
+      <p style="color:var(--red);font-size:12px;font-weight:600">&#9888; Original PII is NEVER stored &bull; Replacement is ONE-WAY (no mapping table)</p>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage">
+      <span class="stage-num" style="background:var(--green)">Stage 4</span>
+      <h4>Audit Log</h4>
+      <div class="code-block" style="margin:12px 0">
+        <div class="code-header"><span class="code-lang">JSON &mdash; Immutable Audit Record</span></div>
+        <div class="code-body">{
+  <span class="key">"message_hash"</span>: <span class="str">"sha256:abc..."</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-02-21T14:30:00Z"</span>,
+  <span class="key">"pii_entities_found"</span>: <span class="num">3</span>,
+  <span class="key">"entity_types"</span>: [<span class="str">"PERSON"</span>, <span class="str">"IP"</span>, <span class="str">"EMAIL"</span>],
+  <span class="key">"model_version"</span>: <span class="str">"llama-3.2-1b-pii-v2"</span>,
+  <span class="key">"processing_ms"</span>: <span class="num">342</span>
+}</div>
+      </div>
+      <p style="color:var(--green);font-size:12px;font-weight:500">&#8594; Immutable audit trail for GDPR compliance</p>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 7: C2PA PROVENANCE -->
+<section class="section fade-in" id="c2pa">
+  <div class="section-header">
+    <div class="section-number">Section 06</div>
+    <h2 class="section-title">C2PA Digital Provenance</h2>
+    <p class="section-desc">Cryptographic signing of datasets for tamper-proof verification by buyers</p>
+  </div>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+    participant KB as Knowledge Base
+    participant MP as Manifest Processor
+    participant KMS as AWS KMS / CloudHSM
+    participant CA as Certificate Authority (X.509)
+    participant DS as Dataset Package
+    participant BUYER as AI Lab (Buyer)
+
+    KB->>MP: Extracted article (JSON)
+    MP->>MP: Create C2PA Manifest<br/>(assertions: author, date,<br/>tools, PII audit log)
+    MP->>KMS: Request private key
+    KMS-->>MP: Signing key (HSM-protected)
+    MP->>CA: Verify X.509 certificate
+    CA-->>MP: Valid certificate chain
+    MP->>MP: Sign manifest (SHA-256)
+    MP->>MP: Hard Binding:<br/>Hash(manifest) ↔ Hash(dataset)
+    MP->>DS: Signed package<br/>(data + manifest + signature)
+    DS->>BUYER: Deliver via marketplace
+    BUYER->>BUYER: Verify C2PA:<br/>✓ Data untampered<br/>✓ Source confirmed<br/>✓ PII removed<br/>✓ Legal provenance
+    </div>
+  </div>
+  <div style="margin-top:24px">
+    <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">C2PA Manifest Structure</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">JSON &mdash; C2PA Assertions</span></div>
+      <div class="code-body">{
+  <span class="key">"dc:title"</span>: <span class="str">"Python Debug Solutions Q4-2026"</span>,
+  <span class="key">"dc:creator"</span>: <span class="str">"NeuroWeave Platform"</span>,
+  <span class="key">"c2pa.created"</span>: <span class="str">"2026-02-21T10:00:00Z"</span>,
+  <span class="key">"c2pa.actions"</span>: [
+    {<span class="key">"action"</span>: <span class="str">"c2pa.collected"</span>, <span class="key">"source"</span>: <span class="str">"discord"</span>},
+    {<span class="key">"action"</span>: <span class="str">"c2pa.anonymized"</span>, <span class="key">"tool"</span>: <span class="str">"pii-redact"</span>},
+    {<span class="key">"action"</span>: <span class="str">"c2pa.compiled"</span>, <span class="key">"tool"</span>: <span class="str">"langgraph"</span>}
+  ],
+  <span class="key">"pii_audit"</span>: <span class="str">"sha256:audit_log_hash..."</span>,
+  <span class="key">"consent_proof"</span>: <span class="str">"sha256:consent_db_hash..."</span>
+}</div>
+    </div>
+  </div>
+  <div style="margin-top:24px">
+    <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">Certified Dataset Package</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="padding:10px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:13px">&#128196; data.jsonl</div>
+      <div style="padding:10px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:13px">&#128272; manifest.c2pa</div>
+      <div style="padding:10px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:13px">&#9997; signature.sig</div>
+      <div style="padding:10px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:13px">&#128220; audit_log.json</div>
+      <div style="padding:10px 18px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:13px">&#128273; certificate.pem</div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 8: GDPR CONSENT -->
+<section class="section fade-in" id="gdpr">
+  <div class="section-header">
+    <div class="section-number">Section 07</div>
+    <h2 class="section-title">GDPR Consent Flow</h2>
+    <p class="section-desc">User-first privacy: granular consent collection via ephemeral Discord UI with full revocation support</p>
+  </div>
+
+  <div style="text-align:center;color:var(--text-muted);font-size:14px;margin-bottom:24px">
+    <span style="background:var(--bg-card);padding:8px 16px;border-radius:20px;border:1px solid var(--border)">User writes first message on a server with NeuroWeave bot</span>
+    <div style="margin:12px 0;font-size:20px">&#8595;</div>
+  </div>
+
+  <div class="consent-mock">
+    <div class="cm-header">
+      <div class="cm-icon">&#128737;</div>
+      <span class="cm-name">NeuroWeave</span>
+      <span class="cm-badge">BOT</span>
+      <span style="font-size:11px;color:#72767d;margin-left:auto">Ephemeral &bull; Only visible to you</span>
+    </div>
+    <div class="cm-body">
+      <strong style="color:#fff">&#128274; NeuroWeave Privacy Notice</strong><br><br>
+      This server uses NeuroWeave to build a knowledge base from technical discussions. Your messages may be processed. Please choose your preferences:
+    </div>
+    <div class="cm-option" onclick="this.querySelector('.cm-checkbox').classList.toggle('checked')">
+      <div class="cm-checkbox checked">&#10003;</div>
+      <div>
+        <div class="cm-opt-title">Knowledge Base</div>
+        <div class="cm-opt-desc">Allow my messages to be used for the community's internal knowledge base (FAQ portal)</div>
+      </div>
+    </div>
+    <div class="cm-option" onclick="this.querySelector('.cm-checkbox').classList.toggle('checked')">
+      <div class="cm-checkbox">&#10003;</div>
+      <div>
+        <div class="cm-opt-title">AI Training Data</div>
+        <div class="cm-opt-desc">Allow anonymized versions of my messages to be licensed to AI companies (all PII removed)</div>
+      </div>
+    </div>
+    <div class="cm-buttons">
+      <button class="cm-btn cm-btn-accept">&#10004; Accept Selected</button>
+      <button class="cm-btn cm-btn-decline">&#10006; Decline All</button>
+    </div>
+    <div class="cm-footer">
+      &#8505; Change anytime: /privacy config &bull; Full policy: neuroweave.dev/privacy
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px;max-width:700px;margin-left:auto;margin-right:auto">
+    <div class="card" style="padding:20px">
+      <h3 style="font-size:14px;color:var(--green);margin-bottom:8px">&#10004; Accept</h3>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.8">
+        consent_records table:<br>
+        user_hash: sha256(id)<br>
+        kb_consent: true/false<br>
+        ai_consent: true/false<br>
+        granted_at: timestamp<br>
+        revocable: true
+      </div>
+    </div>
+    <div class="card" style="padding:20px">
+      <h3 style="font-size:14px;color:var(--red);margin-bottom:8px">&#10006; Decline</h3>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.8">
+        User excluded from<br>
+        all data processing<br><br>
+        Messages pass through<br>
+        but are NEVER collected
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:700px;margin:24px auto 0;padding:20px">
+    <h3 style="font-size:14px;margin-bottom:10px">Revocation Flow &mdash; <code>/privacy config</code></h3>
+    <ol style="font-size:13px;color:var(--text-muted);line-height:1.8;padding-left:18px">
+      <li>User runs <code>/privacy config</code></li>
+      <li>Bot shows current settings (ephemeral)</li>
+      <li>User toggles off any consent</li>
+      <li>DB trigger fires:
+        <ul style="margin-left:16px;list-style:disc">
+          <li>Mark all user's messages as "revoked"</li>
+          <li>Remove from pending dataset exports</li>
+          <li>Re-generate affected articles without this user's contributions</li>
+        </ul>
+      </li>
+      <li>Confirmation sent (ephemeral)</li>
+    </ol>
+  </div>
+</section>
+
+<!-- SECTION 9: DATABASE SCHEMA -->
+<section class="section fade-in" id="database">
+  <div class="section-header">
+    <div class="section-number">Section 08</div>
+    <h2 class="section-title">Database Schema</h2>
+    <p class="section-desc">PostgreSQL + pgvector &mdash; 8 tables covering servers, content, consent, exports, and payments</p>
+  </div>
+  <div class="er-grid">
+    <div class="er-table">
+      <div class="er-table-name">servers</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col"><span class="col-name">discord_id</span><span class="col-type">UNIQUE TEXT</span></div>
+      <div class="er-col"><span class="col-name">name</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">icon_url</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">settings</span><span class="col-type">JSONB</span></div>
+      <div class="er-col"><span class="col-name">plan</span><span class="col-type">ENUM</span></div>
+      <div class="er-col"><span class="col-name">created_at</span><span class="col-type">TSTZ</span></div>
+    </div>
+    <div class="er-table">
+      <div class="er-table-name">channels</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col fk"><span class="col-name">server_id</span><span class="col-type">FK &#8594; servers</span></div>
+      <div class="er-col"><span class="col-name">discord_id</span><span class="col-type">UNIQUE TEXT</span></div>
+      <div class="er-col"><span class="col-name">name</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">is_monitored</span><span class="col-type">BOOL</span></div>
+      <div class="er-col"><span class="col-name">created_at</span><span class="col-type">TSTZ</span></div>
+    </div>
+    <div class="er-table">
+      <div class="er-table-name">consent_records</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col fk"><span class="col-name">server_id</span><span class="col-type">FK &#8594; servers</span></div>
+      <div class="er-col"><span class="col-name">user_hash</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">kb_consent</span><span class="col-type">BOOL</span></div>
+      <div class="er-col"><span class="col-name">ai_consent</span><span class="col-type">BOOL</span></div>
+      <div class="er-col"><span class="col-name">granted_at</span><span class="col-type">TSTZ</span></div>
+      <div class="er-col"><span class="col-name">revoked_at</span><span class="col-type">TSTZ?</span></div>
+      <div class="er-col"><span class="col-name">ip_country</span><span class="col-type">TEXT</span></div>
+    </div>
+    <div class="er-table">
+      <div class="er-table-name">messages</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col fk"><span class="col-name">channel_id</span><span class="col-type">FK &#8594; channels</span></div>
+      <div class="er-col"><span class="col-name">discord_msg_id</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">author_hash</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">content_redacted</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">has_code</span><span class="col-type">BOOL</span></div>
+      <div class="er-col"><span class="col-name">embedding</span><span class="col-type">vector(384)</span></div>
+      <div class="er-col fk"><span class="col-name">thread_id</span><span class="col-type">FK &#8594; threads</span></div>
+      <div class="er-col"><span class="col-name">consent_status</span><span class="col-type">ENUM</span></div>
+      <div class="er-col"><span class="col-name">created_at</span><span class="col-type">TSTZ</span></div>
+      <div class="er-col"><span class="col-name">processed</span><span class="col-type">BOOL</span></div>
+    </div>
+    <div class="er-table">
+      <div class="er-table-name">threads</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col fk"><span class="col-name">channel_id</span><span class="col-type">FK &#8594; channels</span></div>
+      <div class="er-col"><span class="col-name">topic</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">message_ids</span><span class="col-type">JSONB</span></div>
+      <div class="er-col"><span class="col-name">status</span><span class="col-type">ENUM</span></div>
+      <div class="er-col"><span class="col-name">created_at</span><span class="col-type">TSTZ</span></div>
+      <div class="er-col"><span class="col-name">closed_at</span><span class="col-type">TSTZ?</span></div>
+    </div>
+    <div class="er-table">
+      <div class="er-table-name">articles</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col fk"><span class="col-name">server_id</span><span class="col-type">FK &#8594; servers</span></div>
+      <div class="er-col fk"><span class="col-name">thread_id</span><span class="col-type">FK &#8594; threads</span></div>
+      <div class="er-col"><span class="col-name">title</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">content_md</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">structured_json</span><span class="col-type">JSONB</span></div>
+      <div class="er-col"><span class="col-name">tags</span><span class="col-type">TEXT[]</span></div>
+      <div class="er-col"><span class="col-name">quality_score</span><span class="col-type">FLOAT</span></div>
+      <div class="er-col"><span class="col-name">embedding</span><span class="col-type">vector(1536)</span></div>
+      <div class="er-col"><span class="col-name">c2pa_manifest_hash</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">created_at</span><span class="col-type">TSTZ</span></div>
+    </div>
+    <div class="er-table">
+      <div class="er-table-name">dataset_exports</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col"><span class="col-name">name</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">format</span><span class="col-type">ENUM</span></div>
+      <div class="er-col"><span class="col-name">article_ids</span><span class="col-type">INT[]</span></div>
+      <div class="er-col"><span class="col-name">c2pa_signed</span><span class="col-type">BOOL</span></div>
+      <div class="er-col"><span class="col-name">total_tokens</span><span class="col-type">BIGINT</span></div>
+      <div class="er-col"><span class="col-name">sold_to</span><span class="col-type">TEXT?</span></div>
+      <div class="er-col"><span class="col-name">created_at</span><span class="col-type">TSTZ</span></div>
+    </div>
+    <div class="er-table">
+      <div class="er-table-name">pii_audit_logs</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col fk"><span class="col-name">message_id</span><span class="col-type">FK &#8594; messages</span></div>
+      <div class="er-col"><span class="col-name">entities_found</span><span class="col-type">INT</span></div>
+      <div class="er-col"><span class="col-name">entity_types</span><span class="col-type">TEXT[]</span></div>
+      <div class="er-col"><span class="col-name">model_version</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">processing_ms</span><span class="col-type">INT</span></div>
+      <div class="er-col"><span class="col-name">created_at</span><span class="col-type">TSTZ</span></div>
+    </div>
+  </div>
+  <div class="er-grid" style="margin-top:16px;max-width:300px">
+    <div class="er-table">
+      <div class="er-table-name">stripe_accounts</div>
+      <div class="er-col pk"><span class="col-name">id</span><span class="col-type">SERIAL</span></div>
+      <div class="er-col fk"><span class="col-name">server_id</span><span class="col-type">FK &#8594; servers</span></div>
+      <div class="er-col"><span class="col-name">stripe_account_id</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">admin_user_hash</span><span class="col-type">TEXT</span></div>
+      <div class="er-col"><span class="col-name">onboarded</span><span class="col-type">BOOL</span></div>
+      <div class="er-col"><span class="col-name">total_earned</span><span class="col-type">DECIMAL</span></div>
+      <div class="er-col"><span class="col-name">created_at</span><span class="col-type">TSTZ</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 10: STRIPE REVENUE -->
+<section class="section fade-in" id="stripe">
+  <div class="section-header">
+    <div class="section-number">Section 09</div>
+    <h2 class="section-title">Stripe Revenue Flow</h2>
+    <p class="section-desc">Automated revenue distribution from data sales to contributing communities via Stripe Connect</p>
+  </div>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TD
+    BUYER["AI Lab (Buyer)<br/>Purchase: Python Debug Dataset Q4-2026<br/>Price: $50,000"] --> STRIPE
+
+    STRIPE["Stripe Platform Account<br/>$50,000"]
+
+    STRIPE --> PLATFORM["Platform Fee: 25%<br/>$12,500<br/>(infra, AI, C2PA, compliance)"]
+    STRIPE --> POOL["Community Pool: 75%<br/>$37,500"]
+
+    POOL --> SA["Server A (React)<br/>45% of articles<br/>$16,875"]
+    POOL --> SB["Server B (Python)<br/>35% of articles<br/>$13,125"]
+    POOL --> SC["Server C (Rust)<br/>20% of articles<br/>$7,500"]
+
+    SA --> BA["Admin A Bank Account"]
+    SB --> BB["Admin B Bank Account"]
+    SC --> BC["Admin C Bank Account"]
+
+    style BUYER fill:#6366f1,color:#fff
+    style STRIPE fill:#635bff,color:#fff
+    style PLATFORM fill:#1a1a2e,stroke:#eab308,color:#e4e4e7
+    style POOL fill:#1a1a2e,stroke:#22c55e,color:#e4e4e7
+    style SA fill:#1a1a2e,stroke:#06b6d4,color:#e4e4e7
+    style SB fill:#1a1a2e,stroke:#06b6d4,color:#e4e4e7
+    style SC fill:#1a1a2e,stroke:#06b6d4,color:#e4e4e7
+    </div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:20px;justify-content:center">
+    <span style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;font-size:13px;color:var(--text-muted)">&#10004; KYC handled by Stripe</span>
+    <span style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;font-size:13px;color:var(--text-muted)">&#10004; AML compliance</span>
+    <span style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;font-size:13px;color:var(--text-muted)">&#10004; Tax reporting</span>
+    <span style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;font-size:13px;color:var(--text-muted)">&#10004; Global payouts</span>
+  </div>
+</section>
+
+<!-- SECTION 11: TECH STACK -->
+<section class="section fade-in" id="tech-stack">
+  <div class="section-header">
+    <div class="section-number">Section 10</div>
+    <h2 class="section-title">Technology Stack</h2>
+    <p class="section-desc">Complete technology map across all platform layers</p>
+  </div>
+  <div class="stack-grid">
+    <div class="stack-row"><div class="stack-layer">Discord</div><div class="stack-items"><span class="stack-item">discord.py</span><span class="stack-item">Gateway API</span><span class="stack-item">OAuth2</span></div></div>
+    <div class="stack-row"><div class="stack-layer">Queue</div><div class="stack-items"><span class="stack-item">Redis Streams</span><span class="stack-item">Celery</span></div></div>
+    <div class="stack-row"><div class="stack-layer">PII</div><div class="stack-items"><span class="stack-item">Llama 3.2 1B</span><span class="stack-item">pii-redact</span><span class="stack-item">Regex</span></div></div>
+    <div class="stack-row"><div class="stack-layer">Clustering</div><div class="stack-items"><span class="stack-item">sentence-transformers</span><span class="stack-item">scikit-learn</span></div></div>
+    <div class="stack-row"><div class="stack-layer">Agents</div><div class="stack-items"><span class="stack-item">LangGraph</span><span class="stack-item">LangChain</span><span class="stack-item">Claude Haiku</span><span class="stack-item">Pydantic v2</span></div></div>
+    <div class="stack-row"><div class="stack-layer">Database</div><div class="stack-items"><span class="stack-item">PostgreSQL 16</span><span class="stack-item">pgvector</span><span class="stack-item">tsvector FTS</span></div></div>
+    <div class="stack-row"><div class="stack-layer">Provenance</div><div class="stack-items"><span class="stack-item">C2PA SDK</span><span class="stack-item">AWS KMS</span><span class="stack-item">X.509</span></div></div>
+    <div class="stack-row"><div class="stack-layer">Frontend</div><div class="stack-items"><span class="stack-item">Next.js 14</span><span class="stack-item">TypeScript</span><span class="stack-item">Tailwind</span><span class="stack-item">shadcn/ui</span></div></div>
+    <div class="stack-row"><div class="stack-layer">Payments</div><div class="stack-items"><span class="stack-item">Stripe Connect</span><span class="stack-item">Stripe API</span></div></div>
+    <div class="stack-row"><div class="stack-layer">Infra</div><div class="stack-items"><span class="stack-item">Docker Compose</span><span class="stack-item">Hetzner VPS</span><span class="stack-item">GitHub Actions</span><span class="stack-item">Sentry</span></div></div>
+  </div>
+</section>
+
+<!-- SECTION 12: INFRASTRUCTURE -->
+<section class="section fade-in" id="infra">
+  <div class="section-header">
+    <div class="section-number">Section 11</div>
+    <h2 class="section-title">Infrastructure (MVP)</h2>
+    <p class="section-desc">Single VPS deployment with Docker Compose &mdash; optimized for cost-efficiency at early stage</p>
+  </div>
+  <div class="infra-box">
+    <div class="infra-title">VPS &mdash; Hetzner CCX33 &bull; 8 vCPU / 32GB RAM / 240GB NVMe &bull; ~&#8364;50/month</div>
+    <div style="padding-top:12px">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:1px">Docker Compose Services</div>
+      <div class="infra-grid">
+        <div class="infra-service">
+          <div class="svc-name">&#129302; bot</div>
+          <div class="svc-tech">Python</div>
+          <div class="svc-detail">discord.py + Celery worker</div>
+        </div>
+        <div class="infra-service">
+          <div class="svc-name">&#9889; api</div>
+          <div class="svc-tech">FastAPI :8000</div>
+          <div class="svc-detail">Uvicorn, 4 workers</div>
+        </div>
+        <div class="infra-service">
+          <div class="svc-name">&#127760; web</div>
+          <div class="svc-tech">Next.js :3000</div>
+          <div class="svc-detail">Node 20, SSR mode</div>
+        </div>
+        <div class="infra-service">
+          <div class="svc-name">&#128451; postgres</div>
+          <div class="svc-tech">PostgreSQL :5432</div>
+          <div class="svc-detail">+ pgvector, 16GB RAM</div>
+        </div>
+        <div class="infra-service">
+          <div class="svc-name">&#9889; redis</div>
+          <div class="svc-tech">Redis :6379</div>
+          <div class="svc-detail">Streams + Cache</div>
+        </div>
+        <div class="infra-service">
+          <div class="svc-name">&#129504; pii-model</div>
+          <div class="svc-tech">Llama 1B</div>
+          <div class="svc-detail">CPU inference, INT8, ~2GB</div>
+        </div>
+        <div class="infra-service infra-wide">
+          <div class="svc-name">&#128737; nginx</div>
+          <div class="svc-tech">Reverse Proxy</div>
+          <div class="svc-detail">SSL (Let's Encrypt) &bull; api.neuroweave.dev &#8594; :8000 &bull; neuroweave.dev &#8594; :3000 &bull; Rate limiting</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;font-size:12px;color:var(--text-dim)">
+        <strong style="color:var(--text-muted)">Volumes:</strong> /data/postgres (persistent) &bull; /data/redis (persistent) &bull; /data/exports (JSONL files)
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:20px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text-muted)">External Services</div>
+    <div class="external-services">
+      <span class="ext-svc">&#129504; Anthropic API (Claude Haiku)</span>
+      <span class="ext-svc">&#128179; Stripe Connect</span>
+      <span class="ext-svc">&#128272; AWS KMS</span>
+      <span class="ext-svc">&#128027; Sentry</span>
+      <span class="ext-svc">&#9881; GitHub Actions CI/CD</span>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 13: BUSINESS MODEL -->
+<section class="section fade-in" id="business">
+  <div class="section-header">
+    <div class="section-number">Section 12</div>
+    <h2 class="section-title">Business Model: Dual Revenue</h2>
+    <p class="section-desc">Two complementary vectors: Data-as-a-Service and B2B SaaS</p>
+  </div>
+  <div class="biz-grid">
+    <div class="biz-card">
+      <h3>Vector 1: DaaS</h3>
+      <div class="biz-sub">"Trojan Horse in Open-Source"</div>
+      <div class="biz-section">
+        <h4>Free Bot</h4>
+        <p>For open-source servers</p>
+        <ul>
+          <li>Auto FAQ portal</li>
+          <li>/nw-ask search</li>
+          <li>Community analytics</li>
+        </ul>
+      </div>
+      <div class="biz-section">
+        <h4>Barter</h4>
+        <p>Admin grants rights to anonymize + license data</p>
+      </div>
+      <div class="biz-section">
+        <h4>Data Asset Accumulation</h4>
+        <p>Millions of anonymized, structured, C2PA-signed technical conversations</p>
+      </div>
+      <div class="biz-section">
+        <h4>Buyers</h4>
+        <ul>
+          <li>AI Labs (Anthropic, OpenAI, Google, Meta)</li>
+          <li>Scale AI, Appen</li>
+          <li>Databricks users</li>
+        </ul>
+      </div>
+      <div style="margin-top:12px;padding:10px 14px;background:rgba(99,102,241,.08);border-radius:var(--radius-sm);font-size:13px;color:var(--accent-hover);font-weight:500">
+        Pricing: One-off $20K+/dump &bull; DaaS sub: $$$K/year
+      </div>
+    </div>
+    <div class="biz-card">
+      <h3>Vector 2: B2B SaaS</h3>
+      <div class="biz-sub">"Enterprise Knowledge Management"</div>
+      <div class="biz-section">
+        <h4>Paid License</h4>
+        <p>$15-20 / user / month</p>
+        <ul>
+          <li>Internal knowledge base (private)</li>
+          <li>Team onboarding</li>
+          <li>Support deflection</li>
+        </ul>
+      </div>
+      <div class="biz-section">
+        <h4>Data Isolation</h4>
+        <p style="color:var(--red);font-weight:500">Corp data NEVER leaves customer's VPC/tenant</p>
+      </div>
+      <div class="biz-section">
+        <h4>Recurring Revenue (ARR)</h4>
+        <p>Monthly subscriptions fund infrastructure costs while DaaS scales</p>
+      </div>
+      <div style="margin-top:12px;padding:10px 14px;background:rgba(34,197,94,.08);border-radius:var(--radius-sm);font-size:13px;color:var(--green);font-weight:500">
+        Stable ARR to fund growth
+      </div>
+    </div>
+  </div>
+  <div class="network-box">
+    <p>&#128257; <strong>Network Effect:</strong> More servers &#8594; More data &#8594; Higher dataset value &#8594; More revenue share &#8594; More servers want to join</p>
+  </div>
+</section>
+
+<!-- SECTION 14: ROADMAP -->
+<section class="section fade-in" id="roadmap">
+  <div class="section-header">
+    <div class="section-number">Section 13</div>
+    <h2 class="section-title">Roadmap (12 Months)</h2>
+    <p class="section-desc">Five phases from architecture foundation to first data sale</p>
+  </div>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-phase" style="color:var(--accent)">Phase 1 &mdash; Architecture &amp; Foundation</div>
+      <div class="timeline-title">Core Engine Development</div>
+      <div class="timeline-desc">LangGraph agents (Router, Compiler, StateGraph), Edge AI PII + C2PA zero-trust pipeline with &lt;500ms latency</div>
+      <div class="timeline-months">Months 1-2</div>
+      <div class="timeline-milestones">
+        <span class="milestone-tag">M1: LangGraph pipeline works</span>
+        <span class="milestone-tag">M2: PII &lt;500ms, C2PA signing</span>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase" style="color:var(--cyan)">Phase 2 &mdash; MVP &amp; Compliance</div>
+      <div class="timeline-title">Discord Bot + Web Portal</div>
+      <div class="timeline-desc">Bot live with GDPR consent flow, privacy policy. Next.js web portal alpha tested on 1-2 servers.</div>
+      <div class="timeline-months">Months 3-4</div>
+      <div class="timeline-milestones">
+        <span class="milestone-tag">M3: Bot live, GDPR consent</span>
+        <span class="milestone-tag">M4: Web portal alpha</span>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase" style="color:var(--green)">Phase 3 &mdash; Economy &amp; GTM</div>
+      <div class="timeline-title">Stripe Connect + Product Split</div>
+      <div class="timeline-desc">Revenue share payouts integrated, B2B vs DaaS product lines separated, landing pages</div>
+      <div class="timeline-months">Months 5-6</div>
+      <div class="timeline-milestones">
+        <span class="milestone-tag">M5: Stripe Connect integrated</span>
+        <span class="milestone-tag">M6: Product lines separated</span>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase" style="color:var(--orange)">Phase 4 &mdash; Scaling</div>
+      <div class="timeline-title">Growth &amp; Pilot Agreements</div>
+      <div class="timeline-desc">AI outreach to top-500 Discord servers. 2-3 B2B pilot agreements, 50+ public servers onboarded.</div>
+      <div class="timeline-months">Months 7-10</div>
+      <div class="timeline-milestones">
+        <span class="milestone-tag">M7: 50+ servers, 2-3 B2B pilots</span>
+        <span class="milestone-tag">M8: First certified dataset</span>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-phase" style="color:var(--pink)">Phase 5 &mdash; Marketplace</div>
+      <div class="timeline-title">First Data Sale</div>
+      <div class="timeline-desc">JSONL quality validation, C2PA verification, marketplace listing on Opendatabay/Datarade. First revenue distributed!</div>
+      <div class="timeline-months">Months 11-12</div>
+      <div class="timeline-milestones">
+        <span class="milestone-tag">M9: First data license sold!</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 15: PROJECT STRUCTURE -->
+<section class="section fade-in" id="project-structure">
+  <div class="section-header">
+    <div class="section-number">Section 14</div>
+    <h2 class="section-title">Project Structure (Monorepo)</h2>
+  </div>
+  <div class="file-tree"><span class="dir">neuroweave/</span>
+├── <span class="dir">bot/</span>                              <span class="comment"># Discord Bot (Python)</span>
+│   ├── <span class="file">main.py</span>                       <span class="comment"># Entry point</span>
+│   ├── <span class="dir">cogs/</span>
+│   │   ├── <span class="file">listener.py</span>               <span class="comment"># Message listener (Gateway events)</span>
+│   │   ├── <span class="file">commands.py</span>               <span class="comment"># Slash commands (/nw-ask, /nw-status)</span>
+│   │   ├── <span class="file">consent.py</span>                <span class="comment"># GDPR consent UI (ephemeral messages)</span>
+│   │   └── <span class="file">onboarding.py</span>             <span class="comment"># Server setup wizard</span>
+│   ├── <span class="file">config.py</span>                     <span class="comment"># Environment config</span>
+│   └── <span class="file">requirements.txt</span>
+│
+├── <span class="dir">api/</span>                              <span class="comment"># Backend API (FastAPI)</span>
+│   ├── <span class="file">main.py</span>                       <span class="comment"># FastAPI app</span>
+│   ├── <span class="dir">routers/</span>
+│   │   ├── <span class="file">knowledge.py</span>              <span class="comment"># Articles CRUD + search</span>
+│   │   ├── <span class="file">servers.py</span>                <span class="comment"># Server management</span>
+│   │   ├── <span class="file">search.py</span>                 <span class="comment"># Hybrid search (vector + FTS)</span>
+│   │   ├── <span class="file">consent.py</span>                <span class="comment"># Consent management API</span>
+│   │   └── <span class="file">webhooks.py</span>               <span class="comment"># Stripe webhooks</span>
+│   ├── <span class="dir">services/</span>
+│   │   ├── <span class="dir">extraction/</span>
+│   │   │   ├── <span class="file">graph.py</span>              <span class="comment"># LangGraph StateGraph definition</span>
+│   │   │   ├── <span class="dir">nodes/</span>
+│   │   │   │   ├── <span class="file">router.py</span>         <span class="comment"># Router Node</span>
+│   │   │   │   ├── <span class="file">evaluator.py</span>      <span class="comment"># Evaluator Node</span>
+│   │   │   │   └── <span class="file">compiler.py</span>       <span class="comment"># Compiler Node (Pydantic output)</span>
+│   │   │   └── <span class="file">state.py</span>              <span class="comment"># AgentState definition</span>
+│   │   ├── <span class="file">disentanglement.py</span>        <span class="comment"># Conversation clustering</span>
+│   │   ├── <span class="file">anonymizer.py</span>             <span class="comment"># PII detection + redaction</span>
+│   │   ├── <span class="file">embeddings.py</span>             <span class="comment"># Sentence-BERT embeddings</span>
+│   │   ├── <span class="file">c2pa_signer.py</span>            <span class="comment"># C2PA manifest + signing</span>
+│   │   └── <span class="file">dataset_packager.py</span>       <span class="comment"># JSONL export + bundling</span>
+│   ├── <span class="dir">models/</span>                       <span class="comment"># SQLAlchemy ORM</span>
+│   ├── <span class="dir">tasks/</span>                        <span class="comment"># Celery async tasks</span>
+│   ├── <span class="file">db.py</span>                         <span class="comment"># Database connection</span>
+│   └── <span class="file">requirements.txt</span>
+│
+├── <span class="dir">web/</span>                              <span class="comment"># Frontend (Next.js + TypeScript)</span>
+│   ├── <span class="dir">app/</span>
+│   │   ├── <span class="file">page.tsx</span>                  <span class="comment"># Landing page</span>
+│   │   ├── <span class="file">layout.tsx</span>                <span class="comment"># Root layout</span>
+│   │   ├── <span class="dir">[server]/</span>
+│   │   │   ├── <span class="file">page.tsx</span>              <span class="comment"># Server knowledge base</span>
+│   │   │   └── <span class="dir">[slug]/page.tsx</span>        <span class="comment"># Article page</span>
+│   │   ├── <span class="dir">search/page.tsx</span>           <span class="comment"># Global search</span>
+│   │   └── <span class="dir">admin/</span>                    <span class="comment"># Admin dashboard</span>
+│   ├── <span class="dir">components/</span>                   <span class="comment"># React components</span>
+│   ├── <span class="dir">lib/</span>
+│   │   └── <span class="file">api.ts</span>                    <span class="comment"># API client</span>
+│   └── <span class="file">package.json</span>
+│
+├── <span class="dir">infra/</span>                            <span class="comment"># Infrastructure</span>
+│   ├── <span class="file">docker-compose.yml</span>            <span class="comment"># Full stack orchestration</span>
+│   ├── <span class="file">docker-compose.dev.yml</span>        <span class="comment"># Dev overrides</span>
+│   ├── <span class="dir">nginx/nginx.conf</span>              <span class="comment"># Reverse proxy config</span>
+│   └── <span class="dir">sql/init.sql</span>                  <span class="comment"># DB schema + pgvector</span>
+│
+├── <span class="dir">.github/workflows/</span>               <span class="comment"># CI/CD</span>
+│   ├── <span class="file">ci.yml</span>                        <span class="comment"># Lint + test</span>
+│   └── <span class="file">deploy.yml</span>                    <span class="comment"># Docker build + deploy</span>
+│
+├── <span class="file">.env.example</span>
+└── <span class="file">README.md</span></div>
+</section>
+
+<!-- SECTION 16: API ENDPOINTS -->
+<section class="section fade-in" id="api">
+  <div class="section-header">
+    <div class="section-number">Section 15</div>
+    <h2 class="section-title">API Endpoints</h2>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="api-table">
+      <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr class="api-group"><td colspan="3">KNOWLEDGE BASE</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/servers</td><td>List public servers</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/servers/:id/articles</td><td>List articles for server</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/articles/:id</td><td>Get single article</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/search?q=...&amp;server=...</td><td>Hybrid search (vector + FTS)</td></tr>
+
+        <tr class="api-group"><td colspan="3">SERVER MANAGEMENT (Admin, Discord OAuth2)</td></tr>
+        <tr><td><span class="method method-post">POST</span></td><td class="path">/api/servers/:id/channels</td><td>Set monitored channels</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/servers/:id/stats</td><td>Server analytics</td></tr>
+        <tr><td><span class="method method-patch">PATCH</span></td><td class="path">/api/articles/:id/moderate</td><td>Hide/show article</td></tr>
+
+        <tr class="api-group"><td colspan="3">CONSENT</td></tr>
+        <tr><td><span class="method method-post">POST</span></td><td class="path">/api/consent</td><td>Record user consent</td></tr>
+        <tr><td><span class="method method-delete">DELETE</span></td><td class="path">/api/consent/:user_hash</td><td>Revoke consent + purge</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/consent/:user_hash</td><td>Check consent status</td></tr>
+
+        <tr class="api-group"><td colspan="3">DATASET EXPORT (Internal/Admin)</td></tr>
+        <tr><td><span class="method method-post">POST</span></td><td class="path">/api/datasets/export</td><td>Package + sign dataset</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/datasets</td><td>List exports</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/datasets/:id/download</td><td>Download JSONL + C2PA</td></tr>
+
+        <tr class="api-group"><td colspan="3">STRIPE &amp; AUTH</td></tr>
+        <tr><td><span class="method method-post">POST</span></td><td class="path">/api/webhooks/stripe</td><td>Handle payment events</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/auth/discord</td><td>Discord OAuth2 redirect</td></tr>
+        <tr><td><span class="method method-get">GET</span></td><td class="path">/api/auth/discord/callback</td><td>OAuth2 callback</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- SECTION 17: PYDANTIC SCHEMA -->
+<section class="section fade-in" id="schema">
+  <div class="section-header">
+    <div class="section-number">Section 16</div>
+    <h2 class="section-title">Output Schema (Pydantic)</h2>
+    <p class="section-desc">Compiler Node output format &mdash; structured knowledge extracted from Discord threads</p>
+  </div>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">Python &mdash; ExtractedKnowledge</span></div>
+    <div class="code-body"><span class="cm"># Compiler Node output schema</span>
+<span class="kw">class</span> <span class="tp">ExtractedKnowledge</span>(<span class="nb">BaseModel</span>):
+    <span class="str">"""Structured knowledge extracted from a Discord thread"""</span>
+
+    symptom: <span class="tp">str</span>              <span class="cm"># "Next.js app crashes with OOM on build"</span>
+    diagnosis: <span class="tp">str</span>            <span class="cm"># "Memory leak in webpack config due to..."</span>
+    solution: <span class="tp">str</span>             <span class="cm"># "Add splitChunks configuration..."</span>
+    code_snippet: <span class="tp">str</span> | <span class="tp">None</span>  <span class="cm"># Actual code block if present</span>
+    language: <span class="tp">str</span>             <span class="cm"># "python", "javascript", "rust"</span>
+    framework: <span class="tp">str</span> | <span class="tp">None</span>   <span class="cm"># "Next.js", "Django", "Tokio"</span>
+    tags: <span class="tp">list</span>[<span class="tp">str</span>]           <span class="cm"># ["memory-leak", "webpack", "next.js"]</span>
+    confidence: <span class="tp">float</span>         <span class="cm"># 0.0 - 1.0</span>
+    thread_summary: <span class="tp">str</span>      <span class="cm"># One-line summary for search</span></div>
+  </div>
+
+  <div style="margin-top:24px">
+    <h3 style="font-size:16px;font-weight:600;margin-bottom:12px">JSONL Export Format</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">JSON &mdash; One line per record</span></div>
+      <div class="code-body">{
+  <span class="key">"id"</span>: <span class="str">"art_abc123"</span>,
+  <span class="key">"source"</span>: <span class="str">"discord:server_react:channel_help"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2026-02-21T14:30:00Z"</span>,
+  <span class="key">"knowledge"</span>: {
+    <span class="key">"symptom"</span>: <span class="str">"Next.js app crashes with OOM on build"</span>,
+    <span class="key">"diagnosis"</span>: <span class="str">"Memory leak in webpack config..."</span>,
+    <span class="key">"solution"</span>: <span class="str">"Add splitChunks configuration..."</span>,
+    <span class="key">"code_snippet"</span>: <span class="str">"module.exports = { ... }"</span>,
+    <span class="key">"language"</span>: <span class="str">"javascript"</span>,
+    <span class="key">"framework"</span>: <span class="str">"Next.js"</span>,
+    <span class="key">"tags"</span>: [<span class="str">"memory-leak"</span>, <span class="str">"webpack"</span>],
+    <span class="key">"confidence"</span>: <span class="num">0.87</span>,
+    <span class="key">"thread_summary"</span>: <span class="str">"Fix OOM error in Next.js builds"</span>
+  },
+  <span class="key">"metadata"</span>: {
+    <span class="key">"thread_length"</span>: <span class="num">23</span>,
+    <span class="key">"participants_count"</span>: <span class="num">5</span>,
+    <span class="key">"resolution_time_hours"</span>: <span class="num">2.5</span>,
+    <span class="key">"quality_score"</span>: <span class="num">0.87</span>
+  },
+  <span class="key">"provenance"</span>: {
+    <span class="key">"c2pa_manifest_hash"</span>: <span class="str">"sha256:..."</span>,
+    <span class="key">"pii_audit_hash"</span>: <span class="str">"sha256:..."</span>,
+    <span class="key">"consent_verified"</span>: <span class="kw">true</span>
+  }
+}</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="padding:40px 60px;border-top:1px solid var(--border);text-align:center;color:var(--text-dim);font-size:13px">
+  <p><strong style="color:var(--text-muted)">NeuroWeave</strong> &mdash; Technical Architecture v1.0 &bull; February 2026</p>
+  <p style="margin-top:4px">Decentralized knowledge extraction, anonymization &amp; licensing platform</p>
+</footer>
+
+</main>
+
+<script>
+// Mermaid init
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    darkMode: true,
+    background: '#111113',
+    primaryColor: '#6366f1',
+    primaryTextColor: '#e4e4e7',
+    primaryBorderColor: '#2a2a30',
+    lineColor: '#52525b',
+    secondaryColor: '#1a1a2e',
+    tertiaryColor: '#111113',
+    fontSize: '14px'
+  },
+  flowchart: { curve: 'basis', padding: 16 },
+  sequence: { mirrorActors: false, messageAlign: 'center' }
+});
+
+// Scroll fade-in
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.08 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// Active nav link
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-link');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 120) current = s.getAttribute('id');
+  });
+  navLinks.forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === '#' + current) link.classList.add('active');
+  });
+});
+
+// Close sidebar on mobile nav click
+navLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>
