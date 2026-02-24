@@ -25,7 +25,7 @@ def get_consented_users(server_id: str) -> set[str]:
     """Get set of author_hashes that have active kb_consent for a server.
 
     Args:
-        server_id: Discord server ID (looked up via servers.discord_id).
+        server_id: External server ID (looked up via servers.external_id).
 
     Returns:
         Set of user_hash strings with active consent.
@@ -37,7 +37,7 @@ def get_consented_users(server_id: str) -> set[str]:
                     SELECT cr.user_hash
                     FROM consent_records cr
                     JOIN servers s ON cr.server_id = s.id
-                    WHERE s.discord_id = :server_id
+                    WHERE s.external_id = :server_id
                       AND cr.kb_consent = true
                       AND cr.revoked_at IS NULL
                 """),

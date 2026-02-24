@@ -1,10 +1,9 @@
-"""Celery task: process a batch of Discord messages through the extraction pipeline.
+"""Celery task: process a batch of messages through the extraction pipeline.
 
-Triggered by Redis Stream consumer when batch threshold is reached
-(50 messages or 5-minute window, whichever comes first).
+Triggered by Redis Stream consumer (Discord) or GitHub fetcher.
 
 Flow:
-    messages → LangGraph pipeline → [NOISE→discard | article→store_article]
+    messages → consent check → PII anonymize → LangGraph pipeline → store_article
 """
 
 from __future__ import annotations
@@ -25,37 +24,46 @@ logger = structlog.get_logger()
     default_retry_delay=60,
     acks_late=True,
 )
-def process_message_batch(self, channel_id: str, server_id: str, messages: list[dict]):
-    """Process a batch of Discord messages through the extraction pipeline.
+def process_message_batch(
+    self,
+    channel_id: str,
+    server_id: str,
+    messages: list[dict],
+    source_type: str = "discord",
+):
+    """Process a batch of messages through the extraction pipeline.
 
     Args:
-        channel_id: Discord channel ID.
-        server_id: Discord server ID.
+        channel_id: External channel ID (Discord channel or GitHub category).
+        server_id: External server ID (Discord guild or owner/repo).
         messages: List of message dicts with keys:
             id, author_hash, content, timestamp, reply_to, mentions
+        source_type: Source platform — "discord", "github", "discourse".
     """
     logger.info(
         "processing_batch",
         channel=channel_id,
         server=server_id,
+        source=source_type,
         count=len(messages),
     )
 
     start = time.monotonic()
 
     try:
-        # Import here to avoid loading ML models at Celery startup
         from api.services.anonymizer import anonymize
         from api.services.consent_checker import filter_consented_messages
         from api.services.extraction.graph import build_graph
 
-        # GDPR: filter out messages from non-consented users
-        messages, excluded = filter_consented_messages(messages, server_id)
-        if not messages:
-            logger.info("batch_skipped_no_consent", channel=channel_id, excluded=excluded)
-            return {"classification": "SKIPPED", "reason": "no_consented_messages"}
+        # GDPR: consent check (skip for public sources like GitHub)
+        if source_type == "discord":
+            messages, excluded = filter_consented_messages(messages, server_id)
+            if not messages:
+                logger.info("batch_skipped_no_consent", channel=channel_id, excluded=excluded)
+                return {"classification": "SKIPPED", "reason": "no_consented_messages"}
+        # GitHub/Discourse: public data, no consent needed
 
-        # PII anonymization: redact emails, IPs, etc. from message content
+        # PII anonymization
         for msg in messages:
             result = anonymize(msg.get("content", ""))
             msg["content"] = result.text
@@ -65,7 +73,10 @@ def process_message_batch(self, channel_id: str, server_id: str, messages: list[
         initial_state = {
             "messages": messages,
             "threads": [],
+            "source_type": source_type,
+            "skip_disentangle": source_type != "discord",
             "classification": "",
+            "article_type": "",
             "evaluation": None,
             "compiled_article": None,
             "quality_score": 0.0,
@@ -78,7 +89,7 @@ def process_message_batch(self, channel_id: str, server_id: str, messages: list[
 
         config = {
             "configurable": {
-                "thread_id": f"batch_{channel_id}_{int(time.time())}",
+                "thread_id": f"batch_{source_type}_{channel_id}_{int(time.time())}",
             }
         }
 
@@ -92,6 +103,7 @@ def process_message_batch(self, channel_id: str, server_id: str, messages: list[
         logger.info(
             "batch_complete",
             channel=channel_id,
+            source=source_type,
             classification=classification,
             quality=quality,
             duration_ms=round(duration_ms),
@@ -106,6 +118,7 @@ def process_message_batch(self, channel_id: str, server_id: str, messages: list[
                 channel_id=channel_id,
                 server_id=server_id,
                 quality_score=quality,
+                source_type=source_type,
             )
 
         return {

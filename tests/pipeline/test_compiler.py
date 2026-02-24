@@ -18,6 +18,7 @@ class TestExtractedKnowledgeSchema:
 
     def test_null_code_snippet(self):
         ek = ExtractedKnowledge(
+            article_type="troubleshooting",
             symptom="error", diagnosis="cause", solution="fix",
             code_snippet=None, language="python", framework=None,
             tags=["bug"], confidence=0.5, thread_summary="summary",
@@ -28,6 +29,7 @@ class TestExtractedKnowledgeSchema:
         import pytest
         with pytest.raises(Exception):
             ExtractedKnowledge(
+                article_type="troubleshooting",
                 symptom="x", diagnosis="x", solution="x",
                 language="python", tags=["x"], confidence=1.5,
                 thread_summary="x",

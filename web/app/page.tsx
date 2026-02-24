@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
+import SourceBadge from "@/components/SourceBadge";
 import { getServers, type Server } from "@/lib/api";
 
 async function loadServers(): Promise<Server[]> {
@@ -57,14 +58,17 @@ export default async function HomePage() {
                       {server.name}
                     </h3>
                     <p className="text-xs text-dim">
-                      {server.member_count.toLocaleString()} members
+                      {server.source_type === "github" ? server.external_id : `${server.member_count.toLocaleString()} members`}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs text-dim">
-                  <span className="rounded bg-white/[0.04] px-2 py-0.5 font-mono">
-                    {server.plan}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <SourceBadge source={server.source_type || "discord"} />
+                    <span className="rounded bg-white/[0.04] px-2 py-0.5 font-mono">
+                      {server.plan}
+                    </span>
+                  </div>
                   <span>
                     Joined {new Date(server.created_at).toLocaleDateString()}
                   </span>

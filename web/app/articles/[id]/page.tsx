@@ -1,5 +1,7 @@
 import CodeBlock from "@/components/CodeBlock";
 import TagList from "@/components/TagList";
+import SourceBadge from "@/components/SourceBadge";
+import ArticleTypeBadge from "@/components/ArticleTypeBadge";
 import { getArticle } from "@/lib/api";
 import { notFound } from "next/navigation";
 
@@ -21,10 +23,14 @@ export default async function ArticleDetailPage({ params }: Props) {
     <article className="mx-auto max-w-3xl">
       {/* Header */}
       <div className="mb-8">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="rounded-md bg-accent/10 px-2.5 py-1 font-mono text-xs font-medium text-accent-hover">
-            {article.language}
-          </span>
+        <div className="mb-3 flex items-center gap-2 flex-wrap">
+          <SourceBadge source={article.source_type || "discord"} url={article.source_url} />
+          <ArticleTypeBadge type={article.article_type || "troubleshooting"} />
+          {article.language && article.language !== "general" && (
+            <span className="rounded-md bg-accent/10 px-2.5 py-1 font-mono text-xs font-medium text-accent-hover">
+              {article.language}
+            </span>
+          )}
           {article.framework && (
             <span className="rounded-md bg-white/[0.04] px-2.5 py-1 font-mono text-xs text-muted">
               {article.framework}
@@ -86,8 +92,18 @@ export default async function ArticleDetailPage({ params }: Props) {
       )}
 
       {/* Meta */}
-      <footer className="border-t border-border pt-6 text-sm text-dim">
+      <footer className="border-t border-border pt-6 text-sm text-dim flex items-center justify-between">
         <time>Created: {new Date(article.created_at).toLocaleString()}</time>
+        {article.source_url && (
+          <a
+            href={article.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent hover:text-accent-hover transition-colors"
+          >
+            View original discussion &rarr;
+          </a>
+        )}
       </footer>
     </article>
   );

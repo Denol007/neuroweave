@@ -28,6 +28,7 @@ async def search_articles(
     q: str = Query(..., min_length=1, max_length=500, description="Search query"),
     server: int | None = Query(None, description="Filter by server ID"),
     language: str | None = Query(None, description="Filter by language"),
+    source: str | None = Query(None, description="Filter by source type: discord, github"),
     limit: int = Query(20, ge=1, le=100),
 ):
     """Hybrid search: combine vector similarity + full-text relevance.
@@ -65,6 +66,8 @@ async def search_articles(
     )
 
     # Optional filters
+    if source:
+        query = query.where(Article.source_type == source)
     if server:
         query = (
             query

@@ -68,6 +68,7 @@ from api.routers.consent import router as consent_router  # noqa: E402
 from api.routers.servers import router as servers_router  # noqa: E402
 from api.routers.datasets import router as datasets_router  # noqa: E402
 from api.routers.webhooks import router as webhooks_router  # noqa: E402
+from api.routers.github import router as github_router  # noqa: E402
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(articles_router, prefix="/api", tags=["articles"])
@@ -76,6 +77,7 @@ app.include_router(consent_router, prefix="/api", tags=["consent"])
 app.include_router(servers_router, prefix="/api", tags=["servers"])
 app.include_router(datasets_router, prefix="/api", tags=["datasets"])
 app.include_router(webhooks_router, prefix="/api", tags=["webhooks"])
+app.include_router(github_router, prefix="/api", tags=["github"])
 
 
 # --- Health check ---

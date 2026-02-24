@@ -1,7 +1,7 @@
 """Celery task: store a compiled article in PostgreSQL with pgvector embedding.
 
 Called by process_message_batch when a thread passes the quality gate.
-Generates a 1536-dim embedding for the article summary and stores
+Generates a 384-dim embedding for the article summary and stores
 everything in the articles table.
 """
 
@@ -24,16 +24,17 @@ def store_article(
     channel_id: str,
     server_id: str,
     quality_score: float,
+    source_type: str = "discord",
 ):
     """Store a compiled article in PostgreSQL with embedding.
 
     Args:
         article_data: CompiledArticle dict from the compiler node.
-        channel_id: Discord channel ID for linking.
-        server_id: Discord server ID.
+        channel_id: External channel ID (Discord channel ID or GitHub category node_id).
+        server_id: External server ID (Discord guild ID or owner/repo).
         quality_score: Quality gate score.
+        source_type: Source platform — "discord", "github", "discourse".
     """
-    # Use synchronous DB session for Celery (no async event loop)
     from sqlalchemy import create_engine, select
     from sqlalchemy.orm import Session
 
@@ -42,26 +43,25 @@ def store_article(
     from api.models.channel import Channel
     from api.models.thread import Thread, ThreadStatus
 
-    # Convert async URL to sync for Celery worker
     sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2").replace("postgresql+psycopg2", "postgresql")
     engine = create_engine(sync_url)
 
     try:
         with Session(engine) as session:
-            # Find or create the channel reference
+            # Find channel by external_id (source-agnostic)
             channel = session.execute(
-                select(Channel).where(Channel.discord_id == channel_id)
+                select(Channel).where(Channel.external_id == channel_id)
             ).scalar_one_or_none()
 
             if not channel:
-                logger.warning("channel_not_found", channel_id=channel_id)
+                logger.warning("channel_not_found", channel_id=channel_id, source=source_type)
                 return
 
             # Create thread record
             thread = Thread(
                 channel_id=channel.id,
                 status=ThreadStatus.RESOLVED,
-                cluster_metadata={"source": "pipeline"},
+                cluster_metadata={"source": source_type},
             )
             session.add(thread)
             session.flush()
@@ -83,11 +83,14 @@ def store_article(
             # Create article
             article = Article(
                 thread_id=thread.id,
+                article_type=article_data.get("article_type", "troubleshooting"),
+                source_type=source_type,
+                source_url=article_data.get("source_url"),
                 symptom=article_data["symptom"],
                 diagnosis=article_data["diagnosis"],
                 solution=article_data["solution"],
                 code_snippet=article_data.get("code_snippet"),
-                language=article_data["language"],
+                language=article_data.get("language", "general"),
                 framework=article_data.get("framework"),
                 tags=article_data.get("tags", []),
                 confidence=article_data["confidence"],
@@ -101,6 +104,8 @@ def store_article(
             logger.info(
                 "article_stored",
                 article_id=article.id,
+                source=source_type,
+                article_type=article_data.get("article_type", "troubleshooting"),
                 summary=article_data["thread_summary"][:80],
                 quality=quality_score,
             )

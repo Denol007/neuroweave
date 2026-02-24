@@ -2,6 +2,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export interface Article {
   id: number;
+  article_type: string;
+  source_type: string;
+  source_url: string | null;
   symptom: string;
   diagnosis: string;
   solution: string;
@@ -19,6 +22,8 @@ export interface Article {
 
 export interface ArticleBrief {
   id: number;
+  article_type: string;
+  source_type: string;
   thread_summary: string;
   language: string;
   framework: string | null;
@@ -30,9 +35,12 @@ export interface ArticleBrief {
 
 export interface Server {
   id: number;
-  discord_id: string;
+  source_type: string;
+  external_id: string;
+  discord_id: string | null;
   name: string;
   icon_url: string | null;
+  source_url: string | null;
   member_count: number;
   plan: string;
   created_at: string;
@@ -136,4 +144,30 @@ export async function moderateArticle(
     method: "PATCH",
     headers: authHeaders(token),
   });
+}
+
+
+// --- GitHub Repo APIs ---
+
+export async function getGitHubRepos(): Promise<any[]> {
+  return apiFetch("/api/github/repos");
+}
+
+export async function addGitHubRepo(
+  owner: string,
+  repo: string,
+  categoryFilters?: string[]
+): Promise<any> {
+  return apiFetch("/api/github/repos", {
+    method: "POST",
+    body: JSON.stringify({ owner, repo, category_filters: categoryFilters }),
+  });
+}
+
+export async function syncGitHubRepo(serverId: number): Promise<any> {
+  return apiFetch(`/api/github/repos/${serverId}/sync`, { method: "POST" });
+}
+
+export async function deleteGitHubRepo(serverId: number): Promise<any> {
+  return apiFetch(`/api/github/repos/${serverId}`, { method: "DELETE" });
 }

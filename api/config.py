@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     DISCORD_CLIENT_ID: str = ""
     DISCORD_CLIENT_SECRET: str = ""
 
+    # GitHub
+    GITHUB_TOKEN: str = ""
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

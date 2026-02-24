@@ -27,6 +27,13 @@ app.conf.update(
         "api.tasks.process_messages.*": {"queue": "extraction"},
         "api.tasks.generate_article.*": {"queue": "extraction"},
         "api.tasks.export_dataset.*": {"queue": "export"},
+        "api.tasks.fetch_github_discussions.*": {"queue": "extraction"},
+    },
+    beat_schedule={
+        "fetch-github-discussions": {
+            "task": "api.tasks.fetch_github_discussions.fetch_all_github_repos",
+            "schedule": 900.0,  # every 15 minutes
+        },
     },
 )
 
@@ -36,3 +43,4 @@ app.autodiscover_tasks(["api.tasks"])
 import api.tasks.process_messages  # noqa: F401, E402
 import api.tasks.generate_article  # noqa: F401, E402
 import api.tasks.export_dataset  # noqa: F401, E402
+import api.tasks.fetch_github_discussions  # noqa: F401, E402

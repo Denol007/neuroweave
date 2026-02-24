@@ -1,4 +1,4 @@
-.PHONY: install dev-infra dev-migrate dev-seed dev-setup dev-api dev-worker dev-bot dev-web dev dev-stop test lint dev-down dev-reset
+.PHONY: install dev-infra dev-migrate dev-seed dev-seed-github dev-setup dev-api dev-worker dev-bot dev-web dev dev-stop test lint dev-down dev-reset fetch-github
 
 # --- First-time setup ---
 install:
@@ -25,7 +25,13 @@ dev-migrate:
 dev-seed:
 	.venv/bin/python scripts/seed.py
 
-dev-setup: dev-infra dev-migrate dev-seed
+dev-seed-github:
+	.venv/bin/python scripts/seed_github.py
+
+fetch-github:
+	.venv/bin/python scripts/fetch_github.py $(ARGS)
+
+dev-setup: dev-infra dev-migrate dev-seed dev-seed-github
 	@echo ""
 	@echo "✅ Infrastructure ready!"
 	@echo "   Postgres: localhost:5432"
@@ -73,7 +79,7 @@ dev-api:
 	.venv/bin/uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
 dev-worker:
-	.venv/bin/celery -A api.celery_app worker --loglevel=info -Q extraction,export --concurrency=2
+	PYTORCH_MPS_DISABLE=1 TOKENIZERS_PARALLELISM=false .venv/bin/celery -A api.celery_app worker --beat --loglevel=info -Q extraction,export --pool=solo
 
 dev-bot:
 	.venv/bin/python -m bot.main

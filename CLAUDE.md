@@ -463,3 +463,136 @@ These tasks fix critical bugs, add missing services, and make the project actual
 - Update `CodeBlock.tsx` to use shiki with dark theme
 - Auto-detect language from article.language field
 **Verify:** code blocks show colored syntax for JS/Python/Rust
+
+---
+
+# PHASE 3 — GITHUB DISCUSSIONS + MULTI-SOURCE PIPELINE
+
+Expand beyond Discord: add GitHub Discussions as a data source, broaden pipeline to handle any content type (not just code/technical).
+
+## Principles
+- Articles don't require code to be created
+- Content is NOT limited to "technical" — Q&A, guides, discussions are all valuable
+- GitHub Discussions are already threaded → skip disentanglement
+- Public GitHub data → skip consent check
+- Backward compatible with Discord
+
+## Status tracking
+
+```
+[✅] Task 28 — DB Schema: Source-Agnostic Generalization
+[✅] Task 29 — Fix Hard Couplings (generate_article, consent_checker, export)
+[✅] Task 30 — Pipeline: Broaden Router, Evaluator, Compiler for all content types
+[✅] Task 31 — GitHub Discussions Fetcher (GraphQL API + Celery periodic)
+[✅] Task 32 — API: GitHub Repo Management endpoints
+[✅] Task 33 — Frontend: Source Badges + GitHub UI
+[✅] Task 34 — Seed Data + CLI for GitHub sources
+[✅] Task 35 — Tests: GitHub + expanded pipeline
+```
+
+---
+
+## Task 28 — DB Schema: Source-Agnostic Generalization
+**Domain:** Database
+**Depends on:** nothing
+**Priority:** CRITICAL
+**Files to modify:**
+- `api/models/server.py` — add `source_type` enum (discord/github/discourse), `external_id`, `source_url`, `source_metadata` JSONB
+- `api/models/channel.py` — add `external_id`, make `discord_id` nullable
+- `api/models/message.py` — add `external_id`, make `discord_message_id` nullable
+- `api/models/article.py` — add `article_type` enum (troubleshooting/question_answer/guide/discussion_summary), `source_type`, `source_url`
+- New Alembic migration: add columns → backfill → NOT NULL → unique constraints
+**Verify:** `alembic upgrade head` succeeds, existing Discord data has `source_type='discord'` and `external_id` populated
+
+---
+
+## Task 29 — Fix Hard Couplings
+**Domain:** Backend
+**Depends on:** Task 28
+**Files to modify:**
+- `api/tasks/generate_article.py` — `Channel.discord_id` → `Channel.external_id`, add `source_type` param
+- `api/tasks/process_messages.py` — pass `source_type`, skip consent for github
+- `api/services/consent_checker.py` — `servers.discord_id` → `servers.external_id`, skip for github
+- `api/tasks/export_dataset.py` — dynamic source string
+**Verify:** `store_article(channel_id="DIC_kwDO123", source_type="github")` → article stored
+
+---
+
+## Task 30 — Pipeline: Broaden Router, Evaluator, Compiler
+**Domain:** Pipeline
+**Depends on:** Task 28
+**Files to modify:**
+- `api/services/extraction/state.py` — add `source_type`, `article_type`, `skip_disentangle` to AgentState
+- `api/services/extraction/nodes/router.py` — 5 categories: NOISE/TROUBLESHOOTING/QUESTION_ANSWER/GUIDE/DISCUSSION_SUMMARY
+- `api/services/extraction/nodes/evaluator.py` — Q&A passes without code, GUIDE/DISCUSSION always pass
+- `api/services/extraction/nodes/compiler.py` — flexible ExtractedKnowledge (language optional, article_type, source_url)
+- `api/services/extraction/nodes/quality_gate.py` — type-aware scoring (non-code articles not penalized)
+- `api/services/extraction/graph.py` — skip_disentangle support
+**Verify:** Q&A without code → quality ≥ 0.7; existing TROUBLESHOOTING unchanged
+
+---
+
+## Task 31 — GitHub Discussions Fetcher
+**Domain:** Data Ingestion
+**Depends on:** Task 28, Task 29
+**Files to create:**
+- `api/services/github_fetcher.py` — GitHubDiscussionsFetcher class (GraphQL API, fetch + convert to messages)
+- `api/tasks/fetch_github_discussions.py` — Celery periodic task (15 min), fetch new discussions per github server
+**Files to modify:**
+- `api/config.py` — add GITHUB_TOKEN
+- `api/celery_app.py` — register periodic task
+**Verify:** Fetch discussions from `vercel/next.js`, pipeline produces articles with `source_type="github"`
+
+---
+
+## Task 32 — API: GitHub Repo Management
+**Domain:** Backend API
+**Depends on:** Task 31
+**Files to create:**
+- `api/schemas/github.py` — GitHubRepoCreate, GitHubRepoResponse
+- `api/routers/github.py` — POST /api/github/repos, GET /api/github/repos, POST sync, DELETE
+**Files to modify:**
+- `api/routers/search.py` — add `source` filter param
+- `api/schemas/article.py` — add article_type, source_type, source_url
+- `api/schemas/server.py` — add source_type, external_id, source_url
+- `api/main.py` — include github_router
+**Verify:** POST repo → POST sync → GET search?source=github → articles appear
+
+---
+
+## Task 33 — Frontend: Source Badges + GitHub UI
+**Domain:** Frontend
+**Depends on:** Task 32
+**Files to create:**
+- `web/components/SourceBadge.tsx`, `web/components/ArticleTypeBadge.tsx`
+- `web/app/dashboard/github/page.tsx`
+**Files to modify:**
+- `web/components/ArticleCard.tsx` — source + type badges
+- `web/app/page.tsx` — mixed server/repo grid
+- `web/app/articles/[id]/page.tsx` — "View on GitHub" link
+- `web/app/search/page.tsx` — source filter dropdown
+**Verify:** Homepage shows Discord + GitHub, articles have badges, search filters by source
+
+---
+
+## Task 34 — Seed Data + CLI for GitHub
+**Domain:** DevOps
+**Depends on:** Task 32
+**Files to create:**
+- `scripts/seed_github.py` — sample GitHub server + Q&A articles
+- `scripts/fetch_github.py` — CLI: `python scripts/fetch_github.py vercel/next.js --limit 10`
+**Verify:** `make dev-seed-github` → search returns GitHub articles
+
+---
+
+## Task 35 — Tests: GitHub + Expanded Pipeline
+**Domain:** Testing
+**Depends on:** Tasks 28-32
+**Files to create:**
+- `tests/pipeline/test_router_expanded.py` — 5 categories
+- `tests/pipeline/test_evaluator_expanded.py` — Q&A без кода passes
+- `tests/pipeline/test_compiler_expanded.py` — flexible article types
+- `tests/pipeline/test_quality_gate_expanded.py` — non-code scores ≥ 0.7
+- `tests/pipeline/test_github_fetcher.py` — GraphQL mock
+- `tests/api/test_github.py` — CRUD endpoints
+**Verify:** all new tests pass, existing 115 tests still pass

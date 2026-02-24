@@ -9,9 +9,12 @@ from pydantic import BaseModel
 
 class ServerResponse(BaseModel):
     id: int
-    discord_id: str
+    source_type: str = "discord"
+    external_id: str = ""
+    discord_id: str | None = None
     name: str
     icon_url: str | None = None
+    source_url: str | None = None
     member_count: int = 0
     plan: str
     created_at: datetime
@@ -22,6 +25,7 @@ class ServerResponse(BaseModel):
 class ServerStats(BaseModel):
     server_id: int
     server_name: str
+    source_type: str = "discord"
     total_articles: int
     total_threads: int
     total_messages: int

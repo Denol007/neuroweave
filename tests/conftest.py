@@ -105,6 +105,7 @@ def noise_thread() -> list[dict]:
 def high_quality_article() -> dict:
     """A compiled article that should pass the quality gate."""
     return {
+        "article_type": "troubleshooting",
         "symptom": "Next.js 14 build fails with ENOMEM error when running next build on CI",
         "diagnosis": "Default Next.js build config spawns too many worker threads, exceeding available memory on constrained environments like CI/CD runners",
         "solution": "Disable experimental worker threads and limit CPU count in next.config.js. Step 1: Open next.config.js. Step 2: Add experimental section. Step 3: Rebuild.",
@@ -114,6 +115,7 @@ def high_quality_article() -> dict:
         "tags": ["next-js", "oom", "enomem", "build-error", "worker-threads", "memory"],
         "confidence": 0.92,
         "thread_summary": "Fix Next.js 14 ENOMEM build error by disabling worker threads",
+        "source_url": None,
     }
 
 
@@ -121,6 +123,7 @@ def high_quality_article() -> dict:
 def low_quality_article() -> dict:
     """A compiled article that should fail the quality gate."""
     return {
+        "article_type": "troubleshooting",
         "symptom": "error",
         "diagnosis": "bug",
         "solution": "fix it",
@@ -130,4 +133,5 @@ def low_quality_article() -> dict:
         "tags": ["bug"],
         "confidence": 0.3,
         "thread_summary": "fix",
+        "source_url": None,
     }

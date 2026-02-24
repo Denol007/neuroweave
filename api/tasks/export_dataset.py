@@ -79,7 +79,7 @@ def export_dataset(
             for article in articles:
                 record = {
                     "id": f"art_{article.id}",
-                    "source": f"discord:server_{server_id}",
+                    "source": f"{article.source_type}:{server_id}",
                     "knowledge": {
                         "symptom": article.symptom,
                         "diagnosis": article.diagnosis,

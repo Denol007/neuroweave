@@ -13,7 +13,10 @@ class TestGraphIntegration:
         return {
             "messages": messages,
             "threads": [],
+            "source_type": "discord",
+            "skip_disentangle": False,
             "classification": "",
+            "article_type": "",
             "evaluation": None,
             "compiled_article": None,
             "quality_score": 0.0,
@@ -50,9 +53,9 @@ class TestGraphIntegration:
         self, mock_router_llm, mock_eval_llm, mock_compiler_llm
     ):
         """Technical thread → evaluator → compiler → quality gate → PASS."""
-        # Mock Router: TECHNICAL
+        # Mock Router: TROUBLESHOOTING
         router_llm = MagicMock()
-        router_llm.invoke.return_value = MagicMock(content="TECHNICAL")
+        router_llm.invoke.return_value = MagicMock(content="TROUBLESHOOTING")
         mock_router_llm.return_value = router_llm
 
         # Mock Evaluator: resolved
@@ -64,6 +67,7 @@ class TestGraphIntegration:
 
         # Mock Compiler: high quality article
         article = ExtractedKnowledge(
+            article_type="troubleshooting",
             symptom="Next.js 14 build fails with ENOMEM",
             diagnosis="Too many worker threads exhaust memory on constrained environments with limited RAM allocation",
             solution="Disable worker threads in next.config.js by setting experimental.workerThreads to false and limiting cpus to 2. Rebuild after changes.",
@@ -86,7 +90,7 @@ class TestGraphIntegration:
         result = graph.invoke(state, config=config)
 
         # Assertions
-        assert result["classification"] == "TECHNICAL"
+        assert result["classification"] == "TROUBLESHOOTING"
         assert result["evaluation"]["is_resolved"] is True
         assert result["compiled_article"] is not None
         assert result["compiled_article"]["language"] == "javascript"

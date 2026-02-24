@@ -9,6 +9,9 @@ from pydantic import BaseModel, Field
 
 class ArticleResponse(BaseModel):
     id: int
+    article_type: str = "troubleshooting"
+    source_type: str = "discord"
+    source_url: str | None = None
     symptom: str
     diagnosis: str
     solution: str
@@ -30,6 +33,8 @@ class ArticleBrief(BaseModel):
     """Compact article representation for lists."""
 
     id: int
+    article_type: str = "troubleshooting"
+    source_type: str = "discord"
     thread_summary: str
     language: str
     framework: str | None = None

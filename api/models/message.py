@@ -14,10 +14,11 @@ class Message(Base):
     channel_id: Mapped[int] = mapped_column(
         ForeignKey("channels.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    discord_message_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    external_id: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
+    discord_message_id: Mapped[str | None] = mapped_column(String(32), unique=True)
     author_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    reply_to_id: Mapped[str | None] = mapped_column(String(32))
+    reply_to_id: Mapped[str | None] = mapped_column(String(200))
     has_code: Mapped[bool] = mapped_column(default=False)
     embedding = mapped_column(Vector(384))
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)

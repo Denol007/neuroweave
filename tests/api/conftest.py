@@ -55,10 +55,10 @@ def seed_data():
         db.execute(text("DELETE FROM servers WHERE discord_id='test_server_999'"))
         db.commit()
 
-        server = Server(discord_id="test_server_999", name="Test Server", plan=ServerPlan.FREE)
+        server = Server(discord_id="test_server_999", external_id="test_server_999", source_type="discord", name="Test Server", plan=ServerPlan.FREE)
         db.add(server)
         db.flush()
-        channel = Channel(server_id=server.id, discord_id="test_channel_999", name="help", is_monitored=True)
+        channel = Channel(server_id=server.id, discord_id="test_channel_999", external_id="test_channel_999", name="help", is_monitored=True)
         db.add(channel)
         db.flush()
         thread = Thread(channel_id=channel.id, status=ThreadStatus.RESOLVED, message_ids=["msg1", "msg2", "msg3"])

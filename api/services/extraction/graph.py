@@ -39,13 +39,30 @@ def _get_disentangle_engine() -> DisentanglementEngine:
 
 
 def disentangle_node(state: AgentState) -> dict:
-    """Pre-processing node: cluster raw messages into logical threads."""
+    """Pre-processing node: cluster raw messages into logical threads.
+
+    If skip_disentangle is True (pre-threaded sources like GitHub),
+    wraps all messages as a single thread without ML clustering.
+    """
     from api.services.extraction.disentanglement import RawMessage
     from datetime import datetime
 
+    # Skip clustering for pre-threaded sources (GitHub Discussions)
+    if state.get("skip_disentangle"):
+        thread_msgs = []
+        for m in state["messages"]:
+            thread_msgs.append({
+                "author_hash": m.get("author_hash", ""),
+                "content": m.get("content", ""),
+                "timestamp": m.get("timestamp", ""),
+                "has_code": "```" in m.get("content", ""),
+                "has_mention": "@" in m.get("content", ""),
+                "reply_to": m.get("reply_to"),
+            })
+        return {"threads": [thread_msgs] if thread_msgs else [], "current_thread_idx": 0}
+
     engine = _get_disentangle_engine()
 
-    # Convert raw message dicts to RawMessage objects
     raw_messages = []
     for m in state["messages"]:
         raw_messages.append(RawMessage(
