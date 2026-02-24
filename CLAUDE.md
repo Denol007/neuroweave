@@ -596,3 +596,146 @@ Expand beyond Discord: add GitHub Discussions as a data source, broaden pipeline
 - `tests/pipeline/test_github_fetcher.py` — GraphQL mock
 - `tests/api/test_github.py` — CRUD endpoints
 **Verify:** all new tests pass, existing 115 tests still pass
+
+---
+
+# PHASE 4 — UX & PRODUCT QUALITY
+
+Transform from demo to real product. 51+ articles exist with 95% avg quality — content is good, but discovery, search, and engagement are weak.
+
+## Key Problems
+1. No content discovery — homepage shows server list, no articles preview
+2. Search has no filters, no sort, no suggestions
+3. Zero user feedback loop — quality scores are ML metrics, not user-validated
+4. Article pages don't retain users — no related articles, no "what next"
+5. Raw ML scores (92% confidence) confuse regular users
+
+## Status tracking
+
+```
+[ ] Task 36 — Homepage: Stats + Recent Articles + Trending Tags
+[ ] Task 37 — Search: Filter Chips + Sort + Better Results
+[ ] Task 38 — Article Page: Related Articles + Reading Time
+[ ] Task 39 — User Feedback: "Was this helpful?" + View Counter
+[ ] Task 40 — Browse Page: by Language, Type, Tag
+[ ] Task 41 — Better Display: Badges, Breadcrumbs, Polish
+[ ] Task 42 — Cmd+K Instant Search (modal overlay)
+[ ] Task 43 — SEO: Meta Tags, Open Graph, Sitemap
+```
+
+---
+
+## Task 36 — Homepage: Stats + Recent Articles + Trending Tags
+**Domain:** Frontend + API
+**Depends on:** nothing
+**Priority:** HIGH — first impression for new users
+**Changes:**
+- Hero section: show "N articles across M languages" dynamically
+- Add "Recent Articles" section — last 6 articles as ArticleCards
+- Add "Trending Tags" section — top 10 tags with article counts
+- Rename "Servers" → "Knowledge Sources"
+- Remove "plan: FREE" from server cards (admin noise)
+**API:** `GET /api/articles/recent?limit=6`, `GET /api/stats/overview`
+**Verify:** Homepage shows article count, recent articles, trending tags
+
+---
+
+## Task 37 — Search: Filter Chips + Sort + Better Results
+**Domain:** Frontend + API
+**Depends on:** nothing
+**Priority:** HIGH — search is the #1 user action
+**Changes:**
+- Horizontal filter chips: Language (Python, JS, General...), Type (Bug Fix, Q&A, Guide), Source (Discord, GitHub)
+- Sort options: Most Relevant / Newest / Highest Quality
+- Replace raw score "0.847" → "Best match" / "Good match" or hide
+- Empty state: "Try: React hooks, Python async, Docker networking"
+- Fix per-server SearchBar to scope to current server
+**API:** add `sort` param to `GET /api/search`, add `GET /api/search/facets?q=` for filter counts
+**Verify:** Search page shows filter chips, sort works, per-server search scoped
+
+---
+
+## Task 38 — Article Page: Related Articles + Reading Time
+**Domain:** Frontend + API
+**Depends on:** nothing
+**Priority:** HIGH — keeps users on site
+**Changes:**
+- "Related Articles" section at bottom: 4 similar articles via pgvector embedding distance
+- Reading time estimate: "3 min read" based on word count (~200 wpm)
+- Type-aware section labels: Q&A → "Question / Context / Answer", Guide → "Topic / Prerequisites / Guide"
+- Better "View original discussion" as a button, not text link
+**API:** `GET /api/articles/{id}/related?limit=4`
+**Verify:** Article page shows related articles, reading time, type-aware labels
+
+---
+
+## Task 39 — User Feedback: "Was this helpful?" + View Counter
+**Domain:** Full-stack (DB + API + Frontend)
+**Depends on:** nothing
+**Priority:** HIGH — closes the quality feedback loop
+**Changes:**
+- Add to Article model: `views` (int, default 0), `helpful_yes` (int, default 0), `helpful_no` (int, default 0)
+- New Alembic migration
+- `POST /api/articles/{id}/view` — increment views (no auth, fire-and-forget)
+- `POST /api/articles/{id}/feedback` — `{helpful: true/false}` (no auth)
+- Article page: fire view on load, show "Was this helpful? 👍 Yes (23) 👎 No (2)" at bottom
+- ArticleCard: show "👁 142" view count
+- Replace raw quality_score with "Verified ✓" badge (if quality ≥ 0.8)
+**Verify:** Views increment on page load, feedback buttons work, counts display
+
+---
+
+## Task 40 — Browse Page: by Language, Type, Tag
+**Domain:** Frontend + API
+**Depends on:** nothing
+**Priority:** MEDIUM — discovery without search
+**Changes:**
+- New page `/browse` with three sections:
+  - By Language: Python (12), JavaScript (8), General (28) — clickable cards
+  - By Type: Bug Fixes (12), Q&A (19), Guides (9), Discussions (11)
+  - By Tag: top 20 tags as chips with counts
+- Each click → `/search?language=X` or `/search?type=Y`
+- Add "Browse" link to Navbar
+**API:** `GET /api/stats/browse` — aggregated counts
+**Verify:** Browse page shows language/type/tag grids with real counts
+
+---
+
+## Task 41 — Better Display: Badges, Breadcrumbs, Polish
+**Domain:** Frontend
+**Depends on:** Task 39 (needs view count)
+**Changes:**
+- Breadcrumb component: Home > JavaScript > Bug Fixes > Article Title
+- Replace "confidence: 92%" → "AI Verified ✓" green badge (if > 0.8)
+- Replace "quality: 99%" → hide or show as star rating
+- ArticleCard: add reading time "3 min" + view count "👁 142"
+- Article page: add breadcrumbs at top
+**Verify:** Articles show breadcrumbs, badges instead of raw scores
+
+---
+
+## Task 42 — Cmd+K Instant Search (modal overlay)
+**Domain:** Frontend
+**Depends on:** nothing
+**Priority:** MEDIUM — power user feature
+**Changes:**
+- Cmd+K / Ctrl+K opens full-screen modal search (like Vercel, Linear, Algolia DocSearch)
+- Debounced API call as user types (300ms)
+- Top 5 results shown inline: title + type badge + language
+- Arrow keys navigate, Enter opens article, Esc closes
+- Recent searches in localStorage
+**Verify:** Cmd+K opens overlay, typing shows instant results, keyboard nav works
+
+---
+
+## Task 43 — SEO: Meta Tags, Open Graph, Sitemap
+**Domain:** Frontend
+**Depends on:** nothing
+**Priority:** MEDIUM — organic growth
+**Changes:**
+- Dynamic `<title>` per article: "{summary} | NeuroWeave"
+- Dynamic `<meta description>`: first 160 chars of symptom
+- Open Graph tags: og:title, og:description, og:type=article
+- `/sitemap.xml` API endpoint listing all visible articles
+- `robots.txt` allowing crawling
+**Verify:** View page source shows correct meta tags, /sitemap.xml returns XML
