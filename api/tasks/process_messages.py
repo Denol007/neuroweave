@@ -30,6 +30,7 @@ def process_message_batch(
     server_id: str,
     messages: list[dict],
     source_type: str = "discord",
+    source_url: str | None = None,
 ):
     """Process a batch of messages through the extraction pipeline.
 
@@ -39,6 +40,7 @@ def process_message_batch(
         messages: List of message dicts with keys:
             id, author_hash, content, timestamp, reply_to, mentions
         source_type: Source platform — "discord", "github", "discourse".
+        source_url: URL to original discussion (GitHub, Discourse).
     """
     logger.info(
         "processing_batch",
@@ -113,8 +115,13 @@ def process_message_batch(
         if quality >= 0.7 and result.get("compiled_article"):
             from api.tasks.generate_article import store_article
 
+            compiled = result["compiled_article"]
+            # Inject source_url if not already set by compiler
+            if source_url and not compiled.get("source_url"):
+                compiled["source_url"] = source_url
+
             store_article.delay(
-                article_data=result["compiled_article"],
+                article_data=compiled,
                 channel_id=channel_id,
                 server_id=server_id,
                 quality_score=quality,

@@ -99,6 +99,7 @@ def main():
                     server_id=f"{owner}/{repo}",
                     messages=messages,
                     source_type="github",
+                    source_url=d.get("url"),
                 )
                 quality = result.get("quality_score", 0)
                 classification = result.get("classification", "?")

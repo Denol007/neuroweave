@@ -97,6 +97,7 @@ def fetch_and_process(server_id: int):
                 server_id=external_id,
                 messages=messages,
                 source_type="github",
+                source_url=discussion.get("url"),
             )
             processed += 1
 
